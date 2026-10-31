@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM"],
+    "allowJs": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@ekusa/shared-types": ["../../packages/shared-types/src"],
+      "@ekusa/validation": ["../../packages/validation/src"],
+      "@ekusa/api-client": ["../../packages/api-client/src"]
+    }
+  },
+  "include": ["src/**/*", "app/**/*", "expo-router.d.ts"],
+  "exclude": ["node_modules", "dist", ".expo"]
+}

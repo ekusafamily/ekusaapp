@@ -1,0 +1,248 @@
+# EKUSA Digital Platform - GitHub Actions CI Pipeline
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '20'
+  YARN_VERSION: '4.1.1'
+
+jobs:
+  # Type checking for all packages
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Typecheck shared packages
+        run: |
+          yarn workspace @ekusa/shared-types typecheck
+          yarn workspace @ekusa/validation typecheck
+          yarn workspace @ekusa/api-client typecheck
+
+      - name: Typecheck mobile app
+        run: yarn workspace @ekusa/mobile typecheck
+
+      - name: Typecheck admin app
+        run: yarn workspace @ekusa/admin typecheck
+
+      - name: Typecheck API
+        run: yarn workspace @ekusa/api typecheck
+
+  # Linting for all packages
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Lint shared packages
+        run: |
+          yarn workspace @ekusa/shared-types lint
+          yarn workspace @ekusa/validation lint
+          yarn workspace @ekusa/api-client lint
+
+      - name: Lint mobile app
+        run: yarn workspace @ekusa/mobile lint
+
+      - name: Lint admin app
+        run: yarn workspace @ekusa/admin lint
+
+      - name: Lint API
+        run: yarn workspace @ekusa/api lint
+
+  # Unit tests for shared packages
+  test-shared:
+    name: Test Shared Packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Test shared types
+        run: yarn workspace @ekusa/shared-types test
+
+      - name: Test validation
+        run: yarn workspace @ekusa/validation test
+
+      - name: Test api client
+        run: yarn workspace @ekusa/api-client test
+
+  # API tests with database
+  test-api:
+    name: Test API
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ekusa
+          POSTGRES_PASSWORD: ekusa_test_password
+          POSTGRES_DB: ekusa_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ekusa -d ekusa_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://ekusa:ekusa_test_password@localhost:5432/ekusa_test?schema=public
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: test-secret-key
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Generate Prisma client
+        run: yarn workspace @ekusa/api db:generate
+
+      - name: Run migrations
+        run: yarn workspace @ekusa/api db:migrate
+
+      - name: Run API tests
+        run: yarn workspace @ekusa/api test
+
+  # Build all packages
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [typecheck, lint, test-shared]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build all packages
+        run: yarn build
+
+  # Mobile app build (Android)
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    needs: [typecheck, lint]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build Android app
+        run: |
+          cd apps/mobile
+          ./gradlew assembleDebug
+        # Note: For Expo, you'd use eas build --platform android instead
+
+  # Deploy to staging (on develop branch)
+  deploy-staging:
+    name: Deploy Staging
+    runs-on: ubuntu-latest
+    needs: [build, test-api]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging..."
+          # Add your staging deployment commands here
+          # e.g., docker-compose -f docker-compose.staging.yml up -d
+
+  # Deploy to production (on main branch)
+  deploy-production:
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    needs: [build, test-api]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production..."
+          # Add your production deployment commands here
+          # e.g., docker-compose -f docker-compose.prod.yml up -d

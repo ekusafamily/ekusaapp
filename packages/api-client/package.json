@@ -1,0 +1,23 @@
+{
+  "name": "@ekusa/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "generate": "openapi-typescript-codegen --input http://localhost:3000/api/docs-json --output src/generated --client react-query",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ekusa/shared-types": "*",
+    "@ekusa/validation": "*",
+    "@tanstack/react-query": "^5.24.0",
+    "axios": "^1.6.7"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0",
+    "openapi-typescript-codegen": "^2.0.0"
+  }
+}

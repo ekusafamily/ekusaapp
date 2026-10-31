@@ -1,0 +1,727 @@
+// EKUSA Digital Platform - Prisma Schema
+// PostgreSQL database schema for institutional data
+// Private message plaintext is NEVER stored here
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Enums
+// ============================================
+
+enum AccountStatus {
+  registered
+  membership_pending
+  verified_member
+  rejected
+  suspended
+  deactivated
+}
+
+enum MembershipStatus {
+  none
+  pending
+  verified
+  rejected
+  suspended
+}
+
+enum AnnouncementCategory {
+  general
+  urgent
+  meeting
+  event
+  leadership
+  welfare
+  election
+  administrative
+}
+
+enum AnnouncementPriority {
+  normal
+  important
+  urgent
+}
+
+enum AnnouncementStatus {
+  draft
+  scheduled
+  published
+  archived
+}
+
+enum AnnouncementTargetType {
+  everyone
+  verified_members
+  unverified_users
+  campus
+  committee
+  leadership_role
+  event_participants
+  custom_group
+}
+
+enum EventCategory {
+  meeting
+  hike
+  trip
+  social
+  sports
+  academic
+  cultural
+  welfare
+}
+
+enum EventStatus {
+  draft
+  published
+  cancelled
+  completed
+  archived
+}
+
+enum RegistrationStatus {
+  registered
+  cancelled
+  waitlisted
+  attended
+}
+
+enum WelfareCategory {
+  personal
+  emergency
+  academic
+  accommodation
+  financial
+  general
+  other
+}
+
+enum WelfareStatus {
+  submitted
+  under_review
+  in_progress
+  awaiting_information
+  resolved
+  closed
+}
+
+enum ConversationType {
+  direct
+  group
+}
+
+enum MessageType {
+  text
+  image
+  file
+  voice
+  system
+  deletion
+}
+
+enum MessageStatus {
+  pending
+  sent
+  delivered
+  read
+  failed
+}
+
+enum CommunityType {
+  general
+  campus
+  constituency
+  committee
+  interest
+  event
+}
+
+enum CommunityMemberRole {
+  member
+  moderator
+  admin
+}
+
+enum DeviceStatus {
+  active
+  inactive
+  revoked
+}
+
+enum NotificationCategory {
+  announcement
+  event_reminder
+  event_registration
+  membership_update
+  welfare_update
+  message
+  group_activity
+  admin_alert
+}
+
+enum NotificationPriority {
+  low
+  normal
+  high
+  critical
+}
+
+// ============================================
+// Core Account Tables
+// ============================================
+
+model User {
+  id              String            @id @default(cuid())
+  username        String            @unique
+  email           String?           @unique
+  phoneNumber     String?           @unique
+  passwordHash    String
+  accountStatus   AccountStatus     @default(registered)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  profile         Profile?
+  membership      Membership?
+  devices         Device[]
+  conversations   ConversationMember[]
+  sentMessages    Message[]         @relation("SentMessages")
+  welfareRequests WelfareRequest[]  @relation("WelfareRequests")
+  eventRegistrations EventRegistration[]
+  communityMemberships CommunityMember[]
+  roles           UserRole[]
+  notifications   Notification[]
+  auditLogs       AuditLog[]        @relation("AuditLogs")
+  blockedUsers    BlockedUser[]     @relation("BlockedBy")
+  blockedByUsers  BlockedUser[]     @relation("BlockedUser")
+
+  @@map("users")
+}
+
+model Profile {
+  userId          String    @unique
+  displayName     String
+  bio             String?
+  avatarObjectKey String?
+  campus          String?
+  course          String?
+  yearOfStudy     Int?
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Membership {
+  id                  String            @id @default(cuid())
+  userId              String            @unique
+  registrationNumber  String
+  campus              String
+  course              String
+  yearOfStudy         Int
+  contactInfo         String?
+  membershipStatus    MembershipStatus  @default(pending)
+  submittedAt         DateTime          @default(now())
+  reviewedAt          DateTime?
+  reviewedBy          String?
+  rejectionReason     String?
+
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewer            User?             @relation("MembershipReviews", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@map("memberships")
+}
+
+model Device {
+  id                  String        @id @default(cuid())
+  userId              String
+  deviceName          String
+  identityPublicKey   String        // base64 encoded
+  registrationId      Int           @unique
+  pushToken           String?
+  deviceStatus        DeviceStatus  @default(active)
+  createdAt           DateTime      @default(now())
+  lastSeenAt          DateTime      @default(now())
+
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preKeys             PreKey[]
+  signedPreKeys       SignedPreKey[]
+
+  @@unique([userId, registrationId])
+  @@map("devices")
+}
+
+model PreKey {
+  id          String   @id @default(cuid())
+  deviceId    String
+  keyId       Int
+  publicKey   String   // base64 encoded
+  createdAt   DateTime @default(now())
+
+  device      Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([deviceId, keyId])
+  @@map("pre_keys")
+}
+
+model SignedPreKey {
+  id            String   @id @default(cuid())
+  deviceId      String
+  keyId         Int
+  publicKey     String   // base64 encoded
+  signature     String   // base64 encoded
+  createdAt     DateTime @default(now())
+
+  device        Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([deviceId, keyId])
+  @@map("signed_pre_keys")
+}
+
+// ============================================
+// Permissions Tables
+// ============================================
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  displayName String
+  description String?
+  permissions String[]     // Array of permission strings
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  userRoles   UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  userId      String
+  roleId      String
+  assignedBy  String
+  assignedAt  DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedByUser User  @relation("AssignedRoles", fields: [assignedBy], references: [id], onDelete: Restrict)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ============================================
+// Announcement Tables
+// ============================================
+
+model Announcement {
+  id            String                  @id @default(cuid())
+  title         String
+  body          String
+  category      AnnouncementCategory
+  priority      AnnouncementPriority    @default(normal)
+  publisherId   String
+  status        AnnouncementStatus      @default(draft)
+  publishedAt   DateTime?
+  scheduledAt   DateTime?
+  expiresAt     DateTime?
+  pinned        Boolean                 @default(false)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  publisher     User                    @relation(fields: [publisherId], references: [id], onDelete: Restrict)
+  targets       AnnouncementTarget[]
+  reads         AnnouncementRead[]
+
+  @@map("announcements")
+}
+
+model AnnouncementTarget {
+  id              String                   @id @default(cuid())
+  announcementId  String
+  targetType      AnnouncementTargetType
+  targetValue     String
+
+  announcement    Announcement             @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@map("announcement_targets")
+}
+
+model AnnouncementRead {
+  id              String      @id @default(cuid())
+  announcementId  String
+  userId          String
+  firstOpenedAt   DateTime    @default(now())
+  lastOpenedAt    DateTime    @default(now())
+
+  announcement    Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@map("announcement_reads")
+}
+
+// ============================================
+// Event Tables
+// ============================================
+
+model Event {
+  id                    String        @id @default(cuid())
+  title                 String
+  description           String
+  category              EventCategory
+  venue                 String
+  startAt               DateTime
+  endAt                 DateTime
+  registrationDeadline  DateTime
+  capacity              Int?
+  eligibility           String?       // e.g., "verified_members", "campus:embu"
+  registrationFee       Int           @default(0) // in cents/KES
+  status                EventStatus   @default(draft)
+  createdBy             String
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  creator               User          @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  registrations         EventRegistration[]
+
+  @@map("events")
+}
+
+model EventRegistration {
+  id                  String              @id @default(cuid())
+  eventId             String
+  userId              String
+  registrationStatus  RegistrationStatus  @default(registered)
+  registeredAt        DateTime            @default(now())
+  attendanceStatus    String?             // present, absent, excused
+
+  event               Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("event_registrations")
+}
+
+// ============================================
+// Welfare Tables
+// ============================================
+
+model WelfareRequest {
+  id                  String          @id @default(cuid())
+  userId              String
+  category            WelfareCategory
+  subject             String
+  description         String
+  status              WelfareStatus   @default(submitted)
+  assignedOfficerId   String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  closedAt            DateTime?
+
+  user                User            @relation("WelfareRequests", fields: [userId], references: [id], onDelete: Cascade)
+  assignedOfficer     User?           @relation("AssignedWelfare", fields: [assignedOfficerId], references: [id], onDelete: SetNull)
+  updates             WelfareUpdate[]
+
+  @@map("welfare_requests")
+}
+
+model WelfareUpdate {
+  id              String      @id @default(cuid())
+  requestId       String
+  authorId        String
+  message         String
+  createdAt       DateTime    @default(now())
+
+  request         WelfareRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  author          User         @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@map("welfare_updates")
+}
+
+// ============================================
+// Messaging Tables (E2EE - No plaintext!)
+// ============================================
+
+model Conversation {
+  id              String             @id @default(cuid())
+  type            ConversationType
+  name            String?            // for groups
+  description     String?            // for groups
+  avatarObjectKey String?            // for groups
+  createdBy       String?            // for groups
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  members         ConversationMember[]
+  messages        Message[]
+
+  @@map("conversations")
+}
+
+model ConversationMember {
+  id              String      @id @default(cuid())
+  conversationId  String
+  userId          String
+  deviceId        String?     // which device is participating
+  joinedAt        DateTime    @default(now())
+  leftAt          DateTime?
+  isAdmin         Boolean     @default(false)
+
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device          Device?      @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@unique([conversationId, userId, deviceId])
+  @@map("conversation_members")
+}
+
+model DirectConversationPair {
+  id              String   @id @default(cuid())
+  user1Id         String
+  user2Id         String
+  conversationId  String   @unique
+
+  user1           User     @relation("DirectPairsUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2           User     @relation("DirectPairsUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([user1Id, user2Id])
+  @@map("direct_conversation_pairs")
+}
+
+model Message {
+  id                    String      @id @default(cuid())
+  conversationId        String
+  senderId              String
+  senderDeviceId        String
+  recipientId           String?     // for direct conversations
+  recipientDeviceId     String?     // for direct conversations
+  ciphertext            String      // base64 encoded encrypted payload
+  protocolMetadata      String      // base64 encoded protocol metadata (Signal Protocol)
+  messageType           MessageType @default(text)
+  status                MessageStatus @default(pending)
+  sentAt                DateTime    @default(now())
+  deliveredAt           DateTime?
+  readAt                DateTime?
+  deletedAt             DateTime?
+  deleteForEveryone     Boolean     @default(false)
+
+  conversation          Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender                User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Restrict)
+
+  @@index([conversationId, sentAt])
+  @@index([recipientId, status])
+  @@map("messages")
+}
+
+model MessageQueue {
+  id                  String   @id @default(cuid())
+  dedupeKey           String   @unique
+  conversationId      String
+  senderUserId        String
+  senderDeviceId      String
+  recipientUserId     String
+  recipientDeviceId   String?
+  messageId           String   @unique
+  ciphertext          String
+  protocolMetadata    String
+  createdAt           DateTime @default(now())
+
+  @@index([recipientUserId, createdAt])
+  @@map("message_queue")
+}
+
+model DeliveryReceipt {
+  id                  String    @id @default(cuid())
+  messageId           String    @unique
+  conversationId      String
+  senderUserId        String
+  recipientUserId     String
+  recipientDeviceId   String
+  deliveredAt         DateTime  @default(now())
+  readAt              DateTime?
+  deletedAt           DateTime?
+
+  @@index([conversationId, recipientUserId])
+  @@map("delivery_receipts")
+}
+
+model BlockedUser {
+  id          String   @id @default(cuid())
+  blockerId   String
+  blockedId   String
+  createdAt   DateTime @default(now())
+
+  blocker     User     @relation("BlockedBy", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked     User     @relation("BlockedUser", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@map("blocked_users")
+}
+
+// ============================================
+// Community Tables
+// ============================================
+
+model Community {
+  id          String         @id @default(cuid())
+  name        String
+  description String
+  type        CommunityType
+  avatarObjectKey String?
+  isPublic    Boolean        @default(true)
+  createdBy   String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  creator     User           @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  members     CommunityMember[]
+
+  @@map("communities")
+}
+
+model CommunityMember {
+  id          String                @id @default(cuid())
+  communityId String
+  userId      String
+  role        CommunityMemberRole   @default(member)
+  joinedAt    DateTime              @default(now())
+
+  community   Community             @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@map("community_members")
+}
+
+// ============================================
+// Leadership Tables
+// ============================================
+
+model LeadershipPosition {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  leaders     Leader[]
+
+  @@map("leadership_positions")
+}
+
+model Leader {
+  id              String   @id @default(cuid())
+  userId          String
+  positionId      String
+  startDate       DateTime
+  endDate         DateTime?
+  contactInfo     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  position        LeadershipPosition @relation(fields: [positionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, positionId])
+  @@map("leaders")
+}
+
+// ============================================
+// Notification Tables
+// ============================================
+
+model Notification {
+  id          String                 @id @default(cuid())
+  userId      String
+  category    NotificationCategory
+  priority    NotificationPriority   @default(normal)
+  title       String
+  body        String
+  data        Json?
+  read        Boolean                @default(false)
+  sentAt      DateTime               @default(now())
+  readAt      DateTime?
+
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, sentAt])
+  @@map("notifications")
+}
+
+// ============================================
+// Audit Tables
+// ============================================
+
+model AuditLog {
+  id              String      @id @default(cuid())
+  adminUserId     String
+  action          String
+  targetType      String
+  targetId        String
+  changes         Json?
+  metadata        Json?
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime    @default(now())
+
+  adminUser       User        @relation("AuditLogs", fields: [adminUserId], references: [id], onDelete: Restrict)
+
+  @@index([adminUserId, createdAt])
+  @@index([targetType, targetId])
+  @@map("audit_logs")
+}
+
+// ============================================
+// Auth Sessions
+// ============================================
+
+model AuthSession {
+  id            String   @id @default(cuid())
+  userId        String
+  refreshToken  String   @unique
+  userAgent     String?
+  ipAddress     String?
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+  revokedAt     DateTime?
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("auth_sessions")
+}
