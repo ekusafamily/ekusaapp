@@ -10,6 +10,7 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "baseUrl": ".",
+    "types": ["vite/client"],
     "paths": {
       "@/*": ["src/*"],
       "@ekusa/shared-types": ["../../packages/shared-types/src"],

@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiClient, clearAuth, isAuthenticated, getAccessToken } from '@ekusa/api-client';
+import { authApi, userApi, clearAuth, isAuthenticated } from '@ekusa/api-client';
 import type { User } from '@ekusa/shared-types';
 
 interface AuthState {
@@ -39,15 +39,13 @@ export const useAuthStore = create<AuthState>()(
 
         set({ isLoading: true });
         try {
-          // Check if we have a valid token
           if (isAuthenticated()) {
-            const response = await apiClient.getCurrentUser();
+            const response = await authApi.getCurrentUser();
             set({ user: response as User, isInitialized: true, isLoading: false });
           } else {
             set({ isInitialized: true, isLoading: false });
           }
-        } catch (error) {
-          // Token might be expired, clear auth
+        } catch {
           clearAuth();
           set({ user: null, isInitialized: true, isLoading: false, error: 'Session expired. Please log in again.' });
         }
@@ -62,8 +60,8 @@ export const useAuthStore = create<AuthState>()(
       login: async (identifier, password) => {
         set({ isLoading: true, error: null });
         try {
-          await apiClient.login({ identifier, password });
-          const response = await apiClient.getCurrentUser();
+          await authApi.login({ identifier, password });
+          const response = await authApi.getCurrentUser();
           set({ user: response as User, isLoading: false, error: null });
         } catch (error: any) {
           set({ isLoading: false, error: error.message || 'Login failed' });
@@ -74,8 +72,8 @@ export const useAuthStore = create<AuthState>()(
       register: async (data) => {
         set({ isLoading: true, error: null });
         try {
-          await apiClient.register(data);
-          const response = await apiClient.getCurrentUser();
+          await authApi.register(data);
+          const response = await authApi.getCurrentUser();
           set({ user: response as User, isLoading: false, error: null });
         } catch (error: any) {
           set({ isLoading: false, error: error.message || 'Registration failed' });
@@ -86,8 +84,8 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         set({ isLoading: true });
         try {
-          await apiClient.logout();
-        } catch (error) {
+          await authApi.logout();
+        } catch {
           // Ignore logout errors
         } finally {
           clearAuth();
@@ -98,7 +96,7 @@ export const useAuthStore = create<AuthState>()(
       updateProfile: async (data) => {
         set({ isLoading: true });
         try {
-          const response = await apiClient.updateProfile(data);
+          const response = await userApi.updateProfile(data as any);
           set({ user: response as User, isLoading: false });
         } catch (error: any) {
           set({ isLoading: false, error: error.message || 'Failed to update profile' });

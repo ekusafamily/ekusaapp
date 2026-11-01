@@ -45,7 +45,7 @@ export class AuditService {
     endDate?: Date;
     page?: number;
     limit?: number;
-    sortOrder?: string;
+    sortOrder?: 'asc' | 'desc';
   }) {
     const { adminUserId, action, targetType, targetId, startDate, endDate, page = 1, limit = 50, sortOrder = 'desc' } = params;
 
@@ -68,7 +68,7 @@ export class AuditService {
             select: { id: true, username: true, profile: { select: { displayName: true } } },
           },
         },
-        orderBy: { createdAt: sortOrder },
+        orderBy: { createdAt: sortOrder as 'asc' | 'desc' },
         take: limit,
         skip: (page - 1) * limit,
       }),

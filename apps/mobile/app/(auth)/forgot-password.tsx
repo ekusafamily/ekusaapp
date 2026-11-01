@@ -92,9 +92,9 @@ export default function ForgotPasswordScreen() {
                   onChangeText={setEmail}
                   autoCapitalize="none"
                   keyboardType="email-address"
-                  autoCompleteType="email"
+                  autoComplete="email"
                   returnKeyType="go"
-                  textContentType="email"
+                  textContentType="emailAddress"
                   onSubmitEditing={handleSubmit}
                 />
               </View>

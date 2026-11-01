@@ -12,10 +12,8 @@ import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 
 export default function CommunityScreen() {
-  const { user, colorScheme } = useAuthStore();
-  const { colorScheme: themeColorScheme } = useTheme();
-  const effectiveColorScheme = colorScheme || themeColorScheme;
-  const colors = Colors[effectiveColorScheme];
+  const { user } = useAuthStore();
+  const { colors, colorScheme } = useTheme();
 
   const { data: communities, isLoading, refetch } = useQuery({
     queryKey: ['communities'],

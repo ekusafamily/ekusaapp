@@ -11,7 +11,9 @@ import type { ApiResponse, PaginatedResponse } from '@ekusa/shared-types';
 // Configuration
 // ============================================
 
-const API_BASE_URL = __DEV__ ? 'http://10.0.2.2:3000/api/v1' : 'https://api.ekusa.example.com/api/v1';
+declare const __DEV__: boolean;
+
+const API_BASE_URL = typeof __DEV__ !== 'undefined' && __DEV__ ? 'http://10.0.2.2:3000/api/v1' : 'https://api.ekusa.example.com/api/v1';
 
 const STORAGE_KEYS = {
   ACCESS_TOKEN: 'ekusa_access_token',

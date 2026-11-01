@@ -1,11 +1,13 @@
 /**
  * EKUSA Digital Platform - Root App Module
- * Main application module importing all feature modules
+ * Main application module importing all feature modules including Supabase Storage and Health check
  */
 
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
+import { StorageModule } from './storage/storage.module';
+import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { MembershipModule } from './membership/membership.module';
@@ -27,6 +29,8 @@ import { RolesModule } from './roles/roles.module';
       envFilePath: ['.env.local', '.env'],
     }),
     PrismaModule,
+    StorageModule,
+    HealthModule,
     AuthModule,
     UsersModule,
     MembershipModule,

@@ -7,7 +7,7 @@ import { Stack } from 'expo-router';
 import { Providers } from '@/providers/Providers';
 import { useAuthStore } from '@/stores/authStore';
 import { useEffect } from 'react';
-import { initializeAuth } from '@/services/authService';
+
 
 export default function RootLayout() {
   const { initialize } = useAuthStore();

@@ -22,6 +22,13 @@ export interface User {
   phoneNumber?: string;
   passwordHash: string; // Never exposed in API responses
   accountStatus: AccountStatus;
+  // Profile fields (returned by API, optional for display)
+  displayName?: string;
+  avatarUrl?: string;
+  bio?: string;
+  campus?: string;
+  course?: string;
+  yearOfStudy?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -214,6 +221,9 @@ export interface Event {
   eligibility?: string; // e.g., "verified_members", "campus:embu"
   registrationFee: number; // in cents/KES
   status: EventStatus;
+  pinned?: boolean;
+  avatarObjectKey?: string; // S3/storage object key for event image
+  registrationStatus?: RegistrationStatus; // current user's registration status
   createdBy: string;
   createdByName: string;
   createdAt: Date;

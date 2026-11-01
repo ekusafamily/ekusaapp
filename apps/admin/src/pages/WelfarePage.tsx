@@ -23,7 +23,7 @@ export function WelfarePage() {
     const fetch = async () => {
       try {
         const response = await apiClient.get('/admin/welfare/requests', { params: { status: statusFilter, page, limit: 20 } });
-        const data = handleResponse(response);
+        const data: any = handleResponse(response);
         setRequests(data.items);
         setTotalPages(data.totalPages);
       } catch { }
@@ -99,7 +99,7 @@ export function WelfarePage() {
   );
 }
 
-const styles = {
+const styles: Record<string, React.CSSProperties> = {
   container: {display:'flex',flexDirection:'column',gap:'var(--spacing-lg)'},
   loading:{display:'flex',justifyContent:'center',alignItems:'center',padding:'var(--spacing-xxl)',color:'var(--color-text-secondary)'},
   header:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'var(--spacing-md)'},

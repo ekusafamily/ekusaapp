@@ -16,13 +16,13 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
 
-interface TokenPayload {
+export interface TokenPayload {
   sub: string;
   username: string;
   accountStatus: string;
 }
 
-interface Tokens {
+export interface Tokens {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;

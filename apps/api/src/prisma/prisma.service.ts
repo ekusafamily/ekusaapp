@@ -21,9 +21,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async onModuleInit() {
-    // Log queries in development
     if (process.env.NODE_ENV !== 'production') {
-      this.$on('query', (e) => {
+      (this as any).$on('query', (e: any) => {
         this.logger.debug(`Query: ${e.query} | Params: ${e.params} | Duration: ${e.duration}ms`);
       });
     }
@@ -46,8 +45,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     );
     return Promise.all(
       models.map((model) => {
-        if (this[model as string]?.deleteMany) {
-          return this[model as string].deleteMany();
+        if ((this as any)[model as string]?.deleteMany) {
+          return (this as any)[model as string].deleteMany();
         }
       }),
     );

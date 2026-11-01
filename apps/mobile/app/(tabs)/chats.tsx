@@ -13,10 +13,8 @@ import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTok
 import { Avatar } from '@/components/Avatar';
 
 export default function ChatsScreen() {
-  const { user, colorScheme } = useAuthStore();
-  const { colorScheme: themeColorScheme } = useTheme();
-  const effectiveColorScheme = colorScheme || themeColorScheme;
-  const colors = Colors[effectiveColorScheme];
+  const { user } = useAuthStore();
+  const { colors, colorScheme } = useTheme();
 
   const { data: conversations, isLoading, refetch } = useQuery({
     queryKey: ['conversations'],
@@ -78,7 +76,7 @@ export default function ChatsScreen() {
       <FlatList
         data={filteredConversations}
         keyExtractor={(item: any) => item.id}
-        renderItem={({ item }) => <ConversationItem conversation={item} colorScheme={effectiveColorScheme} />}
+        renderItem={({ item }) => <ConversationItem conversation={item} colorScheme={colorScheme} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No conversations yet</Text>

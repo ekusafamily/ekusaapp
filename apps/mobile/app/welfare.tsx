@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, FlatList, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Picker } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, FlatList, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { welfareApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
@@ -42,8 +42,9 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function WelfareScreen() {
-  const { user, colorScheme } = useAuthStore();
-  const { colors } = useTheme();
+  const { user } = useAuthStore();
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+  const { colors, colorScheme } = useTheme();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -165,23 +166,44 @@ export default function WelfareScreen() {
 
             <View style={styles.formGroup}>
               <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>Category *</Text>
-              <View style={[
-                styles.pickerContainer,
-                { backgroundColor: colors.surface, borderColor: errors.category ? colors.error : colors.border },
-              ]}>
-                <Picker
-                  selectedValue={formData.category}
-                  onValueChange={(v) => handleChange('category', v)}
-                  style={styles.picker}
-                  mode="dropdown"
-                >
-                  <Picker.Item label="Select Category" value="" />
-                  {CATEGORIES.map(cat => (
-                    <Picker.Item key={cat.value} label={cat.label} value={cat.value} />
-                  ))}
-                </Picker>
-              </View>
+              <TouchableOpacity
+                style={[
+                  styles.pickerContainer,
+                  { backgroundColor: colors.surface, borderColor: errors.category ? colors.error : colors.border },
+                ]}
+                onPress={() => setCategoryModalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.pickerText, { color: formData.category ? colors.textPrimary : colors.textTertiary }]}>
+                  {formData.category ? CATEGORIES.find(c => c.value === formData.category)?.label : 'Select Category'}
+                </Text>
+                <Text style={{ color: colors.textTertiary }}>{'>'}</Text>
+              </TouchableOpacity>
               {errors.category && <Text style={[styles.fieldError, { color: colors.error }]}>{errors.category}</Text>}
+              <Modal
+                visible={categoryModalVisible}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setCategoryModalVisible(false)}
+              >
+                <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setCategoryModalVisible(false)}>
+                  <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
+                    <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Select Category</Text>
+                    {CATEGORIES.map(cat => (
+                      <TouchableOpacity
+                        key={cat.value}
+                        style={[styles.modalOption, { borderBottomColor: colors.border }]}
+                        onPress={() => { handleChange('category', cat.value); setCategoryModalVisible(false); }}
+                      >
+                        <Text style={[styles.modalOptionText, {
+                          color: formData.category === cat.value ? colors.primary : colors.textPrimary,
+                          fontWeight: formData.category === cat.value ? Typography.weights.semibold : Typography.weights.regular,
+                        }]}>{cat.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </TouchableOpacity>
+              </Modal>
             </View>
 
             <View style={styles.formGroup}>
@@ -262,7 +284,7 @@ export default function WelfareScreen() {
           <FlatList
             data={requests?.items}
             keyExtractor={(item: any) => item.id}
-            renderItem={({ item }) => <RequestItem request={item} colorScheme={effectiveColorScheme} />}
+            renderItem={({ item }) => <RequestItem request={item} colorScheme={colorScheme} />}
             contentContainerStyle={styles.listContent}
           />
         )}
@@ -444,11 +466,38 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: BorderRadius.md,
     overflow: 'hidden',
-  },
-  picker: {
     height: 52,
-    width: '100%',
-    color: colors.textPrimary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+  },
+  pickerText: {
+    fontSize: Typography.sizes.md,
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    paddingBottom: Spacing.xxl,
+  },
+  modalTitle: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.semibold,
+    marginBottom: Spacing.md,
+  },
+  modalOption: {
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+  },
+  modalOptionText: {
+    fontSize: Typography.sizes.md,
   },
   fieldError: {
     fontSize: Typography.sizes.xs,
@@ -510,7 +559,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: Typography.sizes.md,
     textAlign: 'center',
-    color: colors.textTertiary,
   },
   requestCard: {
     borderRadius: BorderRadius.md,

@@ -241,7 +241,7 @@ export function MembershipPage() {
   );
 }
 
-const styles = {
+const styles: Record<string, React.CSSProperties> = {
   container: { display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' },
   loading: { display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 'var(--spacing-xxl)', color: 'var(--color-text-secondary)' },
   error: { padding: 'var(--spacing-lg)', borderRadius: 'var(--border-radius-md)', backgroundColor: 'var(--color-error-container)', color: 'var(--color-error)' },

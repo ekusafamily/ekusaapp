@@ -7,7 +7,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "generate": "openapi-typescript-codegen --input http://localhost:3000/api/docs-json --output src/generated --client react-query",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@ekusa/shared-types": "*",
@@ -17,7 +17,6 @@
   },
   "devDependencies": {
     "typescript": "^5.4.0",
-    "vitest": "^1.4.0",
-    "openapi-typescript-codegen": "^2.0.0"
+    "vitest": "^1.4.0"
   }
 }

@@ -13,6 +13,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EventCategory } from '@prisma/client';
 
 @Injectable()
 export class EventsService {
@@ -36,7 +37,7 @@ export class EventsService {
     const { category, status, campus, upcoming, page = 1, limit = 20, sortBy = 'startAt', sortOrder = 'asc', userId } = params;
 
     const where: any = {};
-    if (category && category !== 'all') where.category = category;
+    if (category && category !== 'all') where.category = category as EventCategory;
     if (status && status !== 'all') where.status = status;
     if (campus) where.venue = { contains: campus, mode: 'insensitive' };
     if (upcoming) where.startAt = { gte: new Date() };
@@ -93,11 +94,6 @@ export class EventsService {
       throw new NotFoundException('Event not found');
     }
 
-    // Check access for non-published events
-    if (event.status !== 'published' && userId) {
-      // Could add admin check here
-    }
-
     return {
       ...event,
       createdByName: event.creator.profile?.displayName || event.creator.username,
@@ -126,11 +122,6 @@ export class EventsService {
 
     if (event.startAt < new Date()) {
       throw new BadRequestException('Event has already started');
-    }
-
-    // Check eligibility
-    if (event.eligibility && !this.checkEligibility(userId, event.eligibility)) {
-      throw new ForbiddenException('You are not eligible for this event');
     }
 
     // Check capacity
@@ -226,7 +217,6 @@ export class EventsService {
     eligibility?: string;
     registrationFee: number;
   }, adminUserId: string) {
-    // Validate dates
     if (data.endAt <= data.startAt) {
       throw new BadRequestException('End time must be after start time');
     }
@@ -236,7 +226,16 @@ export class EventsService {
 
     const event = await this.prisma.event.create({
       data: {
-        ...data,
+        title: data.title,
+        description: data.description,
+        category: data.category as EventCategory,
+        venue: data.venue,
+        startAt: data.startAt,
+        endAt: data.endAt,
+        registrationDeadline: data.registrationDeadline,
+        capacity: data.capacity,
+        eligibility: data.eligibility,
+        registrationFee: data.registrationFee,
         status: 'draft',
         createdBy: adminUserId,
       },
@@ -271,9 +270,12 @@ export class EventsService {
       throw new BadRequestException('End time must be after start time');
     }
 
+    const updateData: any = { ...data };
+    if (data.category) updateData.category = data.category as EventCategory;
+
     const updated = await this.prisma.event.update({
       where: { id },
-      data,
+      data: updateData,
     });
 
     await this.auditService.log({
@@ -333,11 +335,5 @@ export class EventsService {
     });
 
     return { success: true };
-  }
-
-  private checkEligibility(userId: string, eligibility: string): boolean {
-    // Parse eligibility string (e.g., "verified_members", "campus:embu", "role:chairperson")
-    // This is a simplified implementation
-    return true; // In production, implement actual eligibility checks
   }
 }

@@ -182,7 +182,7 @@ export class NotificationService {
 
   async sendTokenToServer(token: string): Promise<void> {
     try {
-      await apiClient.registerDevice({
+      await apiClient.post('/devices', {
         deviceName: `${Platform.OS} Device`,
         identityPublicKey: '', // Will be filled by crypto service
         registrationId: 0, // Will be filled by crypto service
@@ -266,6 +266,3 @@ export function useNotifications() {
     };
   }, [user]);
 }
-
-// Need to import React
-import React from 'react';

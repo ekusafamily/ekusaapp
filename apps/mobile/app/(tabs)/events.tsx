@@ -13,10 +13,8 @@ import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTok
 import { EventCard } from '@/components/EventCard';
 
 export default function EventsScreen() {
-  const { user, colorScheme } = useAuthStore();
-  const { colorScheme: themeColorScheme } = useTheme();
-  const effectiveColorScheme = colorScheme || themeColorScheme;
-  const colors = Colors[effectiveColorScheme];
+  const { user } = useAuthStore();
+  const { colors, colorScheme } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState<'all' | string>('all');
 
   const { data: events, isLoading, refetch } = useQuery({
@@ -88,15 +86,15 @@ export default function EventsScreen() {
       </View>
 
       {/* My Registrations Section */}
-      {user && myRegistrations?.items?.length > 0 && (
+      {user && (myRegistrations?.items?.length ?? 0) > 0 && (
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>My Registrations</Text>
           </View>
           <FlatList
-            data={myRegistrations.items.slice(0, 3)}
+            data={myRegistrations?.items?.slice(0, 3) || []}
             keyExtractor={(item: any) => item.id}
-            renderItem={({ item }) => <EventCard event={item} onPress={() => {}} colorScheme={effectiveColorScheme} />}
+            renderItem={({ item }: { item: any }) => <EventCard event={item} onPress={() => {}} colorScheme={colorScheme} />}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalListContent}
@@ -126,7 +124,7 @@ export default function EventsScreen() {
           <FlatList
             data={upcomingEvents}
             keyExtractor={(item: any) => item.id}
-            renderItem={({ item }) => <EventCard event={item} onPress={() => {}} colorScheme={effectiveColorScheme} />}
+            renderItem={({ item }: { item: any }) => <EventCard event={item} onPress={() => {}} colorScheme={colorScheme} />}
             contentContainerStyle={styles.listContent}
           />
         )}

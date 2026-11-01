@@ -121,7 +121,7 @@ function QuickStat({ label, value }: { label: string; value: number }) {
   );
 }
 
-const styles = {
+const styles: Record<string, React.CSSProperties> = {
   container: {
     display: 'flex',
     flexDirection: 'column',

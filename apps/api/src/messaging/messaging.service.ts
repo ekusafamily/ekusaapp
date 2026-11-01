@@ -113,7 +113,7 @@ export class MessagingService {
       orderBy: { updatedAt: 'desc' },
     });
 
-    return conversations.map(conv => {
+    return conversations.map((conv: any) => {
       const otherMember = conv.members[0];
       const lastMessage = conv.messages[0];
       return {
@@ -149,7 +149,7 @@ export class MessagingService {
       }
 
       // Create new direct conversation
-      return this.prisma.$transaction(async (tx) => {
+      return this.prisma.$transaction(async (tx: any) => {
         const conversation = await tx.conversation.create({
           data: { type: 'direct' },
         });
@@ -175,7 +175,7 @@ export class MessagingService {
       // Group conversation
       const allMemberIds = [...new Set([userId, ...data.memberIds])];
 
-      return this.prisma.$transaction(async (tx) => {
+      return this.prisma.$transaction(async (tx: any) => {
         const conversation = await tx.conversation.create({
           data: {
             type: 'group',
@@ -221,7 +221,7 @@ export class MessagingService {
     if (!conversation) throw new NotFoundException('Conversation not found');
 
     // Check membership
-    const isMember = conversation.members.some(m => m.userId === userId);
+    const isMember = conversation.members.some((m: any) => m.userId === userId);
     if (!isMember) throw new ForbiddenException('Not a member of this conversation');
 
     return {
@@ -245,7 +245,7 @@ export class MessagingService {
     if (!conversation) throw new NotFoundException('Conversation not found');
 
     // Check membership
-    const membership = conversation.members.find(m => m.userId === userId);
+    const membership = conversation.members.find((m: any) => m.userId === userId);
     if (!membership) throw new ForbiddenException('Not a member of this conversation');
 
     // Get sender's device
@@ -256,7 +256,7 @@ export class MessagingService {
     if (!device) throw new BadRequestException('No active device found');
 
     // Determine recipients
-    const recipientMembers = conversation.members.filter(m => m.userId !== userId);
+    const recipientMembers = conversation.members.filter((m: any) => m.userId !== userId);
     if (recipientMembers.length === 0) throw new BadRequestException('No recipients');
 
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

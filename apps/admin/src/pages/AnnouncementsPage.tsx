@@ -157,7 +157,7 @@ export function AnnouncementsPage() {
   );
 }
 
-const styles = {
+const styles: Record<string, React.CSSProperties> = {
   container: {display:'flex',flexDirection:'column',gap:'var(--spacing-lg)'},
   loading:{display:'flex',justifyContent:'center',alignItems:'center',padding:'var(--spacing-xxl)',color:'var(--color-text-secondary)'},
   header:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'var(--spacing-md)',flexWrap:'wrap'},
@@ -186,8 +186,7 @@ const styles = {
   formGroup:{marginBottom:'var(--spacing-md)'},
   label:{display:'block',fontSize:'var(--font-size-sm)',fontWeight:'var(--font-weight-medium)',marginBottom:'var(--spacing-xs)',color:'var(--color-text-primary)'},
   input:{width:'100%',padding:'var(--spacing-sm) var(--spacing-md)',border:'1px solid var(--color-border)',borderRadius:'var(--border-radius-md)',fontSize:'var(--font-size-sm)',fontFamily:'inherit'},
-  textarea:{width:'100%',padding:'var(--spacing-sm) var(--spacing-md)',border:'1px solid var(--color-border)',borderRadius:'var(--border-radius-md)',fontSize:'var(--font-size-sm)',fontFamily:'inherit',resize:'vertical'},
-  select:{width:'100%',padding:'var(--spacing-sm) var(--spacing-md)',border:'1px solid var(--color-border)',borderRadius:'var(--border-radius-md)',fontSize:'var(--font-size-sm)',backgroundColor:'var(--color-surface)'},
+  textarea:{width:'100%',padding:'var(--spacing-sm) var(--spacing-md)',border:'1px solid var(--color-border)',borderRadius:'var(--border-radius-md)',fontSize:'var(--size-sm)',fontFamily:'inherit',resize:'vertical'},
   formRow:{display:'flex',gap:'var(--spacing-md)'},
   checkboxLabel:{display:'flex',alignItems:'center',gap:'var(--spacing-sm)',marginBottom:'var(--spacing-lg)',cursor:'pointer'},
   modalButtons:{display:'flex',justifyContent:'flex-end',gap:'var(--spacing-md)'},

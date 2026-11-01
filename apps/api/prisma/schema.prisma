@@ -189,17 +189,29 @@ model User {
 
   profile         Profile?
   membership      Membership?
+  reviewedMemberships Membership[] @relation("MembershipReviews")
   devices         Device[]
   conversations   ConversationMember[]
   sentMessages    Message[]         @relation("SentMessages")
   welfareRequests WelfareRequest[]  @relation("WelfareRequests")
+  assignedWelfare WelfareRequest[]  @relation("AssignedWelfare")
+  welfareUpdates  WelfareUpdate[]
   eventRegistrations EventRegistration[]
+  createdEvents   Event[]
   communityMemberships CommunityMember[]
+  createdCommunities Community[]
   roles           UserRole[]
+  assignedRoles   UserRole[]        @relation("AssignedRoles")
   notifications   Notification[]
   auditLogs       AuditLog[]        @relation("AuditLogs")
   blockedUsers    BlockedUser[]     @relation("BlockedBy")
   blockedByUsers  BlockedUser[]     @relation("BlockedUser")
+  publishedAnnouncements Announcement[]
+  announcementReads AnnouncementRead[]
+  directPairsUser1 DirectConversationPair[] @relation("DirectPairsUser1")
+  directPairsUser2 DirectConversationPair[] @relation("DirectPairsUser2")
+  leaders         Leader[]
+  authSessions    AuthSession[]
 
   @@map("users")
 }
@@ -222,7 +234,7 @@ model Profile {
 model Membership {
   id                  String            @id @default(cuid())
   userId              String            @unique
-  registrationNumber  String
+  registrationNumber  String            @unique
   campus              String
   course              String
   yearOfStudy         Int
@@ -253,6 +265,7 @@ model Device {
   user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   preKeys             PreKey[]
   signedPreKeys       SignedPreKey[]
+  conversationMembers ConversationMember[]
 
   @@unique([userId, registrationId])
   @@map("devices")
@@ -485,6 +498,7 @@ model Conversation {
 
   members         ConversationMember[]
   messages        Message[]
+  directPairs     DirectConversationPair[]
 
   @@map("conversations")
 }

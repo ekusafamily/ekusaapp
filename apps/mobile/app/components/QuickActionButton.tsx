@@ -3,7 +3,7 @@
  * Grid button for quick actions on Home screen
  */
 
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 
@@ -12,7 +12,7 @@ interface QuickActionButtonProps {
   iconName: string;
   onPress: () => void;
   colorScheme: 'light' | 'dark';
-  style?: View['style'];
+  style?: StyleProp<ViewStyle>;
 }
 
 const ICON_MAP: Record<string, string> = {

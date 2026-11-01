@@ -186,7 +186,7 @@ export const announcementQuerySchema = z.object({
 // Event Schemas
 // ============================================
 
-export const createEventRequestSchema = z.object({
+const baseEventSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().min(1).max(10000),
   category: z.enum([
@@ -206,7 +206,9 @@ export const createEventRequestSchema = z.object({
   capacity: z.number().int().positive().optional().nullable(),
   eligibility: z.string().max(500).optional().nullable(),
   registrationFee: z.number().int().min(0).default(0),
-}).strict().refine(
+}).strict();
+
+export const createEventRequestSchema = baseEventSchema.refine(
   (data) => new Date(data.endAt) > new Date(data.startAt),
   { message: 'End time must be after start time', path: ['endAt'] }
 ).refine(
@@ -214,7 +216,7 @@ export const createEventRequestSchema = z.object({
   { message: 'Registration deadline must be before or at event start', path: ['registrationDeadline'] }
 );
 
-export const updateEventRequestSchema = createEventRequestSchema.partial().strict();
+export const updateEventRequestSchema = baseEventSchema.partial().strict();
 
 export const eventQuerySchema = z.object({
   category: z.enum([

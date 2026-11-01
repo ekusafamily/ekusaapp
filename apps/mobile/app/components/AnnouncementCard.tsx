@@ -14,7 +14,7 @@ interface AnnouncementCardProps {
     body: string;
     category: string;
     priority: 'normal' | 'important' | 'urgent';
-    publishedAt: string;
+    publishedAt?: Date | string;
     pinned: boolean;
     publisherName: string;
   };
@@ -95,8 +95,10 @@ export function AnnouncementCard({ announcement, onPress, colorScheme }: Announc
   );
 }
 
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
+function formatDate(dateInput?: string | Date): string {
+  if (!dateInput) return '';
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  if (isNaN(date.getTime())) return '';
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);

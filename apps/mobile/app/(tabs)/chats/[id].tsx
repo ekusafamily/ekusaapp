@@ -13,15 +13,12 @@ import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTok
 import { Avatar } from '@/components/Avatar';
 import { cryptoService } from '@/services/cryptoService';
 import { storageService } from '@/services/storageService';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
-interface RouteParams {
-  id: string;
-}
-
-export default function ChatScreen({ route }: { route: { params: RouteParams } }) {
-  const { conversationId } = route.params;
-  const { user, colorScheme } = useAuthStore();
+export default function ChatScreen() {
+  const params = useLocalSearchParams<{ id?: string; conversationId?: string }>();
+  const conversationId = (params.conversationId || params.id || '') as string;
+  const { user } = useAuthStore();
   const { colors } = useTheme();
   const queryClient = useQueryClient();
   const [newMessage, setNewMessage] = useState('');
@@ -77,17 +74,21 @@ export default function ChatScreen({ route }: { route: { params: RouteParams } }
         text
       );
 
+      const ciphertextStr = typeof Buffer !== 'undefined'
+        ? Buffer.from(encrypted.ciphertext).toString('base64')
+        : btoa(String.fromCharCode(...encrypted.ciphertext));
+
       return messagingApi.sendMessage({
         conversationId,
-        ciphertext: Array.from(encrypted.ciphertext),
+        ciphertext: ciphertextStr,
         protocolMetadata: '',
         messageType: 'text',
-      });
+      }) as Promise<any>;
     },
-    onSuccess: (sentMessage) => {
+    onSuccess: (sentMessage: any) => {
       // Update local message status
       setMessages(prev => prev.map(m =>
-        m.id === sentMessage.id ? { ...m, status: 'sent' } : m
+        m.id === sentMessage?.id ? { ...m, status: 'sent' } : m
       ));
       setIsSending(false);
       scrollToBottom();

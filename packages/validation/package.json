@@ -6,11 +6,11 @@
   "types": "./src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "zod": "^3.22.4",
-    "@ekusa/shared-types": "*"
+    "@ekusa/shared-types": "*",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

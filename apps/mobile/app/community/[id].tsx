@@ -11,24 +11,25 @@ import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { Avatar } from '@/components/Avatar';
 import { router } from 'expo-router';
+import type { Community } from '@ekusa/shared-types';
 
 interface RouteParams {
   id: string;
 }
 
 export default function CommunityDetailScreen({ route }: { route: { params: RouteParams } }) {
-  const { communityId } = route.params;
-  const { user, colorScheme } = useAuthStore();
-  const { colors } = useTheme();
+  const { id: communityId } = route.params;
+  const { user } = useAuthStore();
+  const { colors, colorScheme } = useTheme();
   const queryClient = useQueryClient();
   const [isMember, setIsMember] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [newPost, setNewPost] = useState('');
   const [isPosting, setIsPosting] = useState(false);
 
-  const { data: community, isLoading, refetch } = useQuery({
+  const { data: community, isLoading, refetch } = useQuery<Community>({
     queryKey: ['community', communityId],
-    queryFn: () => communityApi.get(communityId),
+    queryFn: () => communityApi.get(communityId) as Promise<Community>,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -115,7 +116,7 @@ export default function CommunityDetailScreen({ route }: { route: { params: Rout
         <View style={[styles.header, { backgroundColor: colors.surface }]}>
           <View style={styles.headerContent}>
             <Avatar
-              source={community.avatarObjectKey ? { uri: `https://storage.example.com/${community.avatarObjectKey}` } : undefined}
+              source={community.avatarUrl ? { uri: community.avatarUrl } : undefined}
               name={community.name}
               size="xlarge"
             />
@@ -208,7 +209,7 @@ export default function CommunityDetailScreen({ route }: { route: { params: Rout
           <FlatList
             data={posts}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <PostItem post={item} colorScheme={effectiveColorScheme} />}
+            renderItem={({ item }) => <PostItem post={item} colorScheme={colorScheme} />}
             ListEmptyComponent={
               <View style={styles.emptyPosts}>
                 <Text style={[styles.emptyPostsText, { color: colors.textTertiary }]}>

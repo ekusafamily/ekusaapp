@@ -143,13 +143,13 @@ class StorageService {
   }
 
   // Message storage
-  async saveMessage(message: Message): Promise<void> {
+  async saveMessage(message: any): Promise<void> {
     const key = `${STORAGE_PREFIXES.MESSAGES}${message.conversationId}_${message.id}`;
     await this.set(key, message);
 
     // Update message list for conversation
     const listKey = `msg_list_${message.conversationId}`;
-    const list = (await this.get(listKey)) || [];
+    const list = (await this.get<Message[]>(listKey)) || [];
     const index = list.findIndex((m: Message) => m.id === message.id);
     if (index >= 0) {
       list[index] = message;
@@ -165,9 +165,9 @@ class StorageService {
 
   async getMessages(conversationId: string, limit = 100, before?: string): Promise<Message[]> {
     const listKey = `msg_list_${conversationId}`;
-    const list = (await this.get(listKey)) || [];
+    const list = (await this.get<Message[]>(listKey)) || [];
 
-    let filtered = list;
+    let filtered: Message[] = list;
     if (before) {
       const beforeIndex = list.findIndex((m: Message) => m.id === before);
       if (beforeIndex >= 0) {
@@ -183,8 +183,8 @@ class StorageService {
     const message = await this.get<Message>(key);
     if (message) {
       message.status = status;
-      if (status === 'read') message.readAt = new Date().toISOString();
-      if (status === 'delivered') message.deliveredAt = new Date().toISOString();
+      if (status === 'read') message.readAt = new Date().toISOString() as unknown as Date;
+      if (status === 'delivered') message.deliveredAt = new Date().toISOString() as unknown as Date;
       await this.saveMessage(message);
     }
   }
@@ -193,7 +193,7 @@ class StorageService {
   async saveAnnouncement(announcement: Announcement): Promise<void> {
     await this.set(`${STORAGE_PREFIXES.ANNOUNCEMENTS}${announcement.id}`, announcement);
 
-    const list = (await this.get('announcement_list')) || [];
+    const list = (await this.get<Announcement[]>('announcement_list')) || [];
     const index = list.findIndex((a: Announcement) => a.id === announcement.id);
     if (index >= 0) list[index] = announcement;
     else list.unshift(announcement);
@@ -205,7 +205,7 @@ class StorageService {
   }
 
   async getAnnouncements(limit = 50): Promise<Announcement[]> {
-    const list = (await this.get('announcement_list')) || [];
+    const list = (await this.get<Announcement[]>('announcement_list')) || [];
     return list.slice(0, limit);
   }
 
@@ -213,7 +213,7 @@ class StorageService {
   async saveEvent(event: Event): Promise<void> {
     await this.set(`${STORAGE_PREFIXES.EVENTS}${event.id}`, event);
 
-    const list = (await this.get('event_list')) || [];
+    const list = (await this.get<Event[]>('event_list')) || [];
     const index = list.findIndex((e: Event) => e.id === event.id);
     if (index >= 0) list[index] = event;
     else list.unshift(event);
@@ -225,7 +225,7 @@ class StorageService {
   }
 
   async getEvents(limit = 50): Promise<Event[]> {
-    const list = (await this.get('event_list')) || [];
+    const list = (await this.get<Event[]>('event_list')) || [];
     return list.slice(0, limit);
   }
 
@@ -233,7 +233,7 @@ class StorageService {
   async saveWelfareRequest(request: WelfareRequest): Promise<void> {
     await this.set(`${STORAGE_PREFIXES.WELFARE}${request.id}`, request);
 
-    const list = (await this.get('welfare_list')) || [];
+    const list = (await this.get<WelfareRequest[]>('welfare_list')) || [];
     const index = list.findIndex((w: WelfareRequest) => w.id === request.id);
     if (index >= 0) list[index] = request;
     else list.unshift(request);
@@ -245,7 +245,7 @@ class StorageService {
   }
 
   async getWelfareRequests(limit = 50): Promise<WelfareRequest[]> {
-    const list = (await this.get('welfare_list')) || [];
+    const list = (await this.get<WelfareRequest[]>('welfare_list')) || [];
     return list.slice(0, limit);
   }
 

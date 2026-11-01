@@ -119,7 +119,7 @@ apiClient.interceptors.response.use(
 );
 
 // Helper functions
-export function handleResponse<T>(response: { data: { success: boolean; data?: T; error?: { code: string; message: string } } }): T {
+export function handleResponse<T = any>(response: { data: { success: boolean; data?: T; error?: { code: string; message: string } } }): T {
   if (!response.data.success) {
     throw new ApiError(
       response.data.error?.code || 'API_ERROR',

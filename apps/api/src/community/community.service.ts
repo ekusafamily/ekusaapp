@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { CommunityType } from '@prisma/client';
 
 @Injectable()
 export class CommunityService {
@@ -23,7 +24,7 @@ export class CommunityService {
     const { type, isPublic, page = 1, limit = 20 } = params;
 
     const where: any = {};
-    if (type && type !== 'all') where.type = type;
+    if (type && type !== 'all') where.type = type as CommunityType;
     if (isPublic !== undefined) where.isPublic = isPublic;
 
     const [items, total] = await Promise.all([
@@ -117,7 +118,14 @@ export class CommunityService {
   // Admin
   async create(adminUserId: string, data: { name: string; description: string; type: string; isPublic: boolean; avatarObjectKey?: string | null }) {
     const community = await this.prisma.community.create({
-      data: { ...data, createdBy: adminUserId },
+      data: {
+        name: data.name,
+        description: data.description,
+        type: data.type as CommunityType,
+        isPublic: data.isPublic,
+        avatarObjectKey: data.avatarObjectKey,
+        createdBy: adminUserId,
+      },
     });
 
     // Add creator as admin
@@ -139,7 +147,10 @@ export class CommunityService {
     const community = await this.prisma.community.findUnique({ where: { id } });
     if (!community) throw new NotFoundException('Community not found');
 
-    const updated = await this.prisma.community.update({ where: { id }, data });
+    const updateData: any = { ...data };
+    if (data.type) updateData.type = data.type as CommunityType;
+
+    const updated = await this.prisma.community.update({ where: { id }, data: updateData });
 
     await this.auditService.log({
       adminUserId,

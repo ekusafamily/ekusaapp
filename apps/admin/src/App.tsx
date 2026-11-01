@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { apiClient, isAuthenticated } from '@ekusa/api-client';
+import { authApi, isAuthenticated, clearAuth } from '@ekusa/api-client';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -26,9 +26,9 @@ export function App() {
     const checkAuth = async () => {
       if (isAuthenticated()) {
         try {
-          await apiClient.getCurrentUser();
+          await authApi.getCurrentUser();
         } catch {
-          apiClient.clearAuth();
+          clearAuth();
         }
       }
       setIsAuthChecked(true);
@@ -44,7 +44,7 @@ export function App() {
           borderTopColor: 'var(--color-primary)', borderRadius: '50%',
           animation: 'spin 1s linear infinite'
         }} />
-        <style jsx>{`
+        <style>{`
           @keyframes spin { to { transform: rotate(360deg); } }
         `}</style>
       </div>

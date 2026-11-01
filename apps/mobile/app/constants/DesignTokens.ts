@@ -268,4 +268,4 @@ export const ZIndex = {
 } as const;
 
 export type ColorScheme = 'light' | 'dark';
-export type ColorPalette = typeof Colors.light;
+export type ColorPalette = typeof Colors.light | typeof Colors.dark;

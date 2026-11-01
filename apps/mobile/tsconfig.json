@@ -5,12 +5,12 @@
     "lib": ["ES2022", "DOM"],
     "allowJs": true,
     "noEmit": true,
-    "isolatedModules": true,
+    "module": "ESNext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
+      "@/*": ["app/*"],
       "@ekusa/shared-types": ["../../packages/shared-types/src"],
       "@ekusa/validation": ["../../packages/validation/src"],
       "@ekusa/api-client": ["../../packages/api-client/src"]

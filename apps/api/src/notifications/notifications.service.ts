@@ -102,7 +102,7 @@ export class NotificationsService {
       return;
     }
 
-    const pushTokens = devices.map(d => d.pushToken!).filter(Boolean);
+    const pushTokens = devices.map((d: any) => d.pushToken!).filter(Boolean);
 
     // In production, send to FCM
     // For now, just log

@@ -16,10 +16,8 @@ import { Avatar } from '@/components/Avatar';
 import { MembershipBadge } from '@/components/MembershipBadge';
 
 export default function HomeScreen() {
-  const { user, colorScheme } = useAuthStore();
-  const { colorScheme: themeColorScheme } = useTheme();
-  const effectiveColorScheme = colorScheme || themeColorScheme;
-  const colors = Colors[effectiveColorScheme];
+  const { user } = useAuthStore();
+  const { colors, colorScheme } = useTheme();
 
   const { data: announcements, isLoading: announcementsLoading, refetch: refetchAnnouncements } = useQuery({
     queryKey: ['announcements', 'home'],
@@ -99,7 +97,7 @@ export default function HomeScreen() {
                 key={announcement.id}
                 announcement={announcement}
                 onPress={() => {}}
-                colorScheme={effectiveColorScheme}
+                colorScheme={colorScheme}
               />
             ))}
           </View>
@@ -130,7 +128,7 @@ export default function HomeScreen() {
                 key={event.id}
                 event={event}
                 onPress={() => {}}
-                colorScheme={effectiveColorScheme}
+                colorScheme={colorScheme}
               />
             ))}
           </View>
@@ -147,7 +145,7 @@ export default function HomeScreen() {
               label={action.label}
               iconName={action.icon}
               onPress={() => {}}
-              colorScheme={effectiveColorScheme}
+              colorScheme={colorScheme}
             />
           ))}
         </View>
@@ -161,19 +159,19 @@ export default function HomeScreen() {
             title="New Leadership Elected"
             description="EKUSA congratulates the newly elected officials for the 2024/2025 term."
             time="2 days ago"
-            colorScheme={effectiveColorScheme}
+            colorScheme={colorScheme}
           />
           <AssociationUpdateItem
             title="Welfare Fund Disbursement"
             description="KES 500,000 disbursed to support 25 students in emergency assistance program."
             time="1 week ago"
-            colorScheme={effectiveColorScheme}
+            colorScheme={colorScheme}
           />
           <AssociationUpdateItem
             title="Annual General Meeting"
             description="AGM scheduled for March 15th. All verified members are encouraged to attend."
             time="2 weeks ago"
-            colorScheme={effectiveColorScheme}
+            colorScheme={colorScheme}
           />
         </View>
       </View>

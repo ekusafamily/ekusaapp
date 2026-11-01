@@ -12,24 +12,23 @@ import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { Avatar } from '@/components/Avatar';
 import { MembershipBadge } from '@/components/MembershipBadge';
+import type { MembershipApplication, User as UserType } from '@ekusa/shared-types';
 
 export default function ProfileScreen() {
-  const { user, logout, colorScheme, updateProfile } = useAuthStore();
-  const { colorScheme: themeColorScheme } = useTheme();
-  const effectiveColorScheme = colorScheme || themeColorScheme;
-  const colors = Colors[effectiveColorScheme];
+  const { user, logout, updateProfile } = useAuthStore();
+  const { colors, colorScheme } = useTheme();
   const queryClient = useQueryClient();
 
-  const { data: profile, refetch: refetchProfile } = useQuery({
+  const { data: profile, refetch: refetchProfile } = useQuery<UserType>({
     queryKey: ['user-profile'],
-    queryFn: () => userApi.getCurrentUser(),
+    queryFn: () => authApi.getCurrentUser() as Promise<UserType>,
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: membership } = useQuery({
+  const { data: membership } = useQuery<MembershipApplication>({
     queryKey: ['membership-status'],
-    queryFn: () => membershipApi.getMyStatus(),
+    queryFn: () => membershipApi.getMyStatus() as Promise<MembershipApplication>,
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
@@ -142,7 +141,7 @@ export default function ProfileScreen() {
               )}
             </View>
           )}
-          {displayUser?.accountStatus !== 'verified_member' && displayUser?.accountStatus !== 'verified' && (
+          {displayUser?.accountStatus !== 'verified_member' && (
             <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
               <Text style={[styles.actionButtonText, { color: colors.onPrimary }]}>Apply for Membership</Text>
             </TouchableOpacity>
@@ -156,45 +155,45 @@ export default function ProfileScreen() {
           {
             title: 'Account',
             items: [
-              { label: 'Edit Profile', icon: '✏️', route: '/profile/edit' },
-              { label: 'Change Password', icon: '🔒', route: '/profile/password' },
-              { label: 'Linked Accounts', icon: '🔗', route: '/profile/linked' },
+              { label: 'Edit Profile', route: '/profile/edit' },
+              { label: 'Change Password', route: '/profile/password' },
+              { label: 'Linked Accounts', route: '/profile/linked' },
             ],
           },
           {
             title: 'Privacy & Security',
             items: [
-              { label: 'Privacy Settings', icon: '🛡️', route: '/settings/privacy' },
-              { label: 'Blocked Users', icon: '🚫', route: '/settings/blocked' },
-              { label: 'Two-Factor Authentication', icon: '🔐', route: '/settings/2fa' },
-              { label: 'Active Sessions', icon: '📱', route: '/settings/sessions' },
+              { label: 'Privacy Settings', route: '/settings/privacy' },
+              { label: 'Blocked Users', route: '/settings/blocked' },
+              { label: 'Two-Factor Authentication', route: '/settings/2fa' },
+              { label: 'Active Sessions', route: '/settings/sessions' },
             ],
           },
           {
             title: 'Notifications',
             items: [
-              { label: 'Push Notifications', icon: '🔔', route: '/settings/notifications' },
-              { label: 'Email Preferences', icon: '📧', route: '/settings/email' },
-              { label: 'Announcement Alerts', icon: '📢', route: '/settings/announcements' },
+              { label: 'Push Notifications', route: '/settings/notifications' },
+              { label: 'Email Preferences', route: '/settings/email' },
+              { label: 'Announcement Alerts', route: '/settings/announcements' },
             ],
           },
           {
             title: 'Messaging',
             items: [
-              { label: 'Chat Settings', icon: '💬', route: '/settings/chat' },
-              { label: 'Encryption Keys', icon: '🔑', route: '/settings/encryption' },
-              { label: 'Data & Storage', icon: '💾', route: '/settings/storage' },
+              { label: 'Chat Settings', route: '/settings/chat' },
+              { label: 'Encryption Keys', route: '/settings/encryption' },
+              { label: 'Data & Storage', route: '/settings/storage' },
             ],
           },
           {
             title: 'Danger Zone',
             items: [
-              { label: 'Log Out', icon: '🚪', action: handleLogout, destructive: true },
-              { label: 'Delete Account', icon: '🗑️', action: handleDeleteAccount, destructive: true },
+              { label: 'Log Out', action: handleLogout, destructive: true },
+              { label: 'Delete Account', action: handleDeleteAccount, destructive: true },
             ],
           },
         ].map((section) => (
-          <SettingsSection key={section.title} section={section} colorScheme={effectiveColorScheme} />
+          <SettingsSection key={section.title} section={section} colorScheme={colorScheme} />
         ))}
       </View>
 
@@ -213,8 +212,8 @@ function getMembershipLabel(status: string): string {
     registered: 'Registered (Not Applied)',
     pending: 'Pending Verification',
     membership_pending: 'Pending Verification',
-    verified: 'Verified Member ✓',
-    verified_member: 'Verified Member ✓',
+    verified: 'Verified Member',
+    verified_member: 'Verified Member',
     rejected: 'Application Rejected',
     suspended: 'Membership Suspended',
   };
@@ -238,7 +237,7 @@ function SettingsSection({ section, colorScheme }: { section: any; colorScheme: 
           activeOpacity={0.7}
         >
           <View style={styles.itemLeft}>
-            <Text style={styles.itemIcon}>{item.icon}</Text>
+            {item.icon ? <Text style={styles.itemIcon}>{item.icon}</Text> : null}
             <Text style={[styles.itemLabel, item.destructive ? { color: colors.error } : { color: colors.textPrimary }]}>
               {item.label}
             </Text>

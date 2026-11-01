@@ -4,7 +4,7 @@
  */
 
 import { useMemo } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 
@@ -12,7 +12,7 @@ interface AvatarProps {
   source?: { uri: string } | number;
   name?: string;
   size?: 'small' | 'medium' | 'large' | 'xlarge';
-  style?: View['style'];
+  style?: StyleProp<ViewStyle>;
 }
 
 const SIZE_MAP = {
@@ -75,7 +75,7 @@ export function Avatar({ source, name, size = 'medium', style }: AvatarProps) {
       <Text
         style={[
           styles.initials,
-          { fontSize, color: colors.onPrimaryContainer || colors.textOnPrimary },
+          { fontSize, color: colors.onPrimary },
         ]}
       >
         {initials}

@@ -73,7 +73,7 @@ export default function LoginScreen() {
               value={identifier}
               onChangeText={setIdentifier}
               autoCapitalize="none"
-              autoCompleteType="username"
+              autoComplete="username"
               returnKeyType="next"
               textContentType="username"
             />
@@ -96,7 +96,7 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              autoCompleteType="password"
+              autoComplete="password"
               returnKeyType="go"
               textContentType="password"
               onSubmitEditing={handleLogin}
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: Spacing.md,
-    shadowColor: colors.primary,
+    shadowColor: Colors.light.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

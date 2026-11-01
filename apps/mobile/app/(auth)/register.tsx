@@ -126,7 +126,7 @@ export default function RegisterScreen() {
               value={formData.username}
               onChangeText={v => handleChange('username', v)}
               autoCapitalize="none"
-              autoCompleteType="username"
+              autoComplete="username"
               returnKeyType="next"
               textContentType="username"
             />
@@ -146,9 +146,9 @@ export default function RegisterScreen() {
               onChangeText={v => handleChange('email', v)}
               autoCapitalize="none"
               keyboardType="email-address"
-              autoCompleteType="email"
+              autoComplete="email"
               returnKeyType="next"
-              textContentType="email"
+              textContentType="emailAddress"
             />
             {errors.email && <Text style={[styles.fieldError, { color: colors.error }]}>{errors.email}</Text>}
           </View>
@@ -165,7 +165,7 @@ export default function RegisterScreen() {
               value={formData.phoneNumber}
               onChangeText={v => handleChange('phoneNumber', v)}
               keyboardType="phone-pad"
-              autoCompleteType="tel"
+              autoComplete="tel"
               returnKeyType="next"
               textContentType="telephoneNumber"
             />
@@ -184,7 +184,7 @@ export default function RegisterScreen() {
               value={formData.password}
               onChangeText={v => handleChange('password', v)}
               secureTextEntry
-              autoCompleteType="new-password"
+              autoComplete="new-password"
               returnKeyType="next"
               textContentType="newPassword"
             />
@@ -203,7 +203,7 @@ export default function RegisterScreen() {
               value={formData.confirmPassword}
               onChangeText={v => handleChange('confirmPassword', v)}
               secureTextEntry
-              autoCompleteType="new-password"
+              autoComplete="new-password"
               returnKeyType="go"
               textContentType="newPassword"
               onSubmitEditing={handleRegister}
@@ -215,10 +215,10 @@ export default function RegisterScreen() {
           <View style={styles.passwordRequirements}>
             <Text style={[styles.requirementsTitle, { color: colors.textSecondary }]}>Password must contain:</Text>
             <RequirementItem met={formData.password.length >= 8} text="At least 8 characters" colorScheme={colors} />
-            <RequirementItem met=/[A-Z]/.test(formData.password) text="One uppercase letter" colorScheme={colors} />
-            <RequirementItem met=/[a-z]/.test(formData.password) text="One lowercase letter" colorScheme={colors} />
-            <RequirementItem met=/[0-9]/.test(formData.password) text="One number" colorScheme={colors} />
-            <RequirementItem met=/[^A-Za-z0-9]/.test(formData.password) text="One special character" colorScheme={colors} />
+            <RequirementItem met={/[A-Z]/.test(formData.password)} text="One uppercase letter" colorScheme={colors} />
+            <RequirementItem met={/[a-z]/.test(formData.password)} text="One lowercase letter" colorScheme={colors} />
+            <RequirementItem met={/[0-9]/.test(formData.password)} text="One number" colorScheme={colors} />
+            <RequirementItem met={/[^A-Za-z0-9]/.test(formData.password)} text="One special character" colorScheme={colors} />
           </View>
 
           <TouchableOpacity
@@ -256,7 +256,7 @@ export default function RegisterScreen() {
   );
 }
 
-function RequirementItem({ met, text, colorScheme }: { met: boolean; text: string; colorScheme: typeof Colors.light }) {
+function RequirementItem({ met, text, colorScheme }: { met: boolean; text: string; colorScheme: typeof Colors.light | typeof Colors.dark }) {
   return (
     <View style={styles.requirementRow}>
       <View

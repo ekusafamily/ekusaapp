@@ -59,7 +59,7 @@ export function SettingsPage() {
 
       <div style={styles.card}>
         <h3 style={styles.sectionTitle}>File Upload</h3>
-        <div style={styles.formGroup}><label style={styles.label}>Max File Size (MB)</label><input type="number" style={styles.input} value={settings?.maxFileUploadSize / (1024*1024)} onChange={e=>handleChange('maxFileUploadSize', parseInt(e.target.value) * 1024 * 1024)} min="1" /></div>
+        <div style={styles.formGroup}><label style={styles.label}>Max File Size (MB)</label><input type="number" style={styles.input} value={(settings?.maxFileUploadSize || 0) / (1024*1024)} onChange={e=>handleChange('maxFileUploadSize', parseInt(e.target.value) * 1024 * 1024)} min="1" /></div>
       </div>
 
       <div style={styles.card}>
@@ -77,7 +77,7 @@ export function SettingsPage() {
   );
 }
 
-const styles = {
+const styles: Record<string, React.CSSProperties> = {
   container:{display:'flex',flexDirection:'column',gap:'var(--spacing-lg)'},
   loading:{display:'flex',justifyContent:'center',alignItems:'center',padding:'var(--spacing-xxl)',color:'var(--color-text-secondary)'},
   header:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'var(--spacing-md)'},

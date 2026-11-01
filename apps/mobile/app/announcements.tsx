@@ -11,16 +11,15 @@ import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { AnnouncementCard } from '@/components/AnnouncementCard';
+import type { Announcement } from '@ekusa/shared-types';
 
 export default function AnnouncementsScreen() {
-  const { user, colorScheme } = useAuthStore();
-  const { colorScheme: themeColorScheme } = useTheme();
-  const effectiveColorScheme = colorScheme || themeColorScheme;
-  const colors = Colors[effectiveColorScheme];
+  const { user } = useAuthStore();
+  const { colors, colorScheme } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedPriority, setSelectedPriority] = useState<string>('all');
 
-  const { data: announcements, isLoading, refetch } = useQuery({
+  const { data: announcements, isLoading, refetch } = useQuery<{ items: Announcement[]; page: number; limit: number; total: number; totalPages: number }>({
     queryKey: ['announcements', selectedCategory, selectedPriority],
     queryFn: () => announcementsApi.list({
       category: selectedCategory === 'all' ? undefined : selectedCategory,
@@ -28,7 +27,7 @@ export default function AnnouncementsScreen() {
       limit: 50,
       sortBy: 'publishedAt',
       sortOrder: 'desc',
-    }),
+    }) as Promise<{ items: Announcement[]; page: number; limit: number; total: number; totalPages: number }>,
     staleTime: 2 * 60 * 1000,
   });
 
@@ -126,7 +125,7 @@ export default function AnnouncementsScreen() {
           <AnnouncementCard
             announcement={item}
             onPress={() => {}}
-            colorScheme={effectiveColorScheme}
+            colorScheme={colorScheme}
           />
         )}
         ListEmptyComponent={

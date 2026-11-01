@@ -6,8 +6,10 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 
+import type { AccountStatus } from '@ekusa/shared-types';
+
 interface MembershipBadgeProps {
-  status: 'none' | 'pending' | 'verified' | 'rejected' | 'suspended' | 'registered' | 'membership_pending' | 'verified_member';
+  status: AccountStatus | 'none' | 'pending' | 'verified';
   size?: 'small' | 'medium' | 'large';
   showIcon?: boolean;
 }
@@ -21,15 +23,17 @@ const STATUS_LABELS: Record<string, string> = {
   verified_member: 'Verified',
   rejected: 'Rejected',
   suspended: 'Suspended',
+  deactivated: 'Deactivated',
 };
 
 export function MembershipBadge({ status, size = 'medium', showIcon = true }: MembershipBadgeProps) {
   const normalizedStatus = status === 'registered' ? 'none' :
     status === 'membership_pending' ? 'pending' :
-    status === 'verified_member' ? 'verified' : status;
+    status === 'verified_member' ? 'verified' :
+    status === 'deactivated' ? 'suspended' : status;
 
   const label = STATUS_LABELS[normalizedStatus] || 'Unknown';
-  const color = Colors.light.membership[normalizedStatus] || Colors.light.textTertiary;
+  const color = Colors.light.membership[normalizedStatus as keyof typeof Colors.light.membership] || Colors.light.textTertiary;
   const bgColor = color + '20'; // 12% opacity
 
   const sizeStyles = {
@@ -40,10 +44,10 @@ export function MembershipBadge({ status, size = 'medium', showIcon = true }: Me
 
   const icons: Record<string, string> = {
     none: '○',
-    pending: '⏳',
+    pending: '…',
     verified: '✓',
-    rejected: '✗',
-    suspended: '⚠',
+    rejected: '×',
+    suspended: '!',
   };
 
   return (

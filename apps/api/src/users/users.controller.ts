@@ -1,6 +1,6 @@
 /**
  * EKUSA Digital Platform - Users Controller
- * User profile management and search endpoints
+ * User profile management and search endpoints with memory storage for Supabase upload
  */
 
 import {
@@ -10,7 +10,6 @@ import {
   Post,
   Body,
   Param,
-  Query,
   UseGuards,
   Request,
   UploadedFile,
@@ -21,8 +20,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { memoryStorage } from 'multer';
 
 @ApiTags('Users')
 @Controller('users')
@@ -68,13 +66,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @UseInterceptors(FileInterceptor('avatar', {
-    storage: diskStorage({
-      destination: './uploads/avatars',
-      filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
-      },
-    }),
+    storage: memoryStorage(),
     fileFilter: (req, file, cb) => {
       if (!file.mimetype.match(/^image\/(jpeg|png|webp)$/)) {
         return cb(new BadRequestException('Only JPEG, PNG, and WebP images are allowed'), false);
@@ -97,12 +89,13 @@ export class UsersController {
       },
     },
   })
-  @ApiOperation({ summary: 'Upload profile avatar' })
+  @ApiOperation({ summary: 'Upload profile avatar to Supabase Storage' })
   async uploadAvatar(@Request() req: any, @UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
     const objectKey = await this.usersService.uploadAvatar(req.user.sub, file);
-    return { avatarUrl: await this.usersService.getAvatarUrl(objectKey) };
+    const avatarUrl = await this.usersService.getAvatarUrl(objectKey);
+    return { avatarUrl };
   }
 }

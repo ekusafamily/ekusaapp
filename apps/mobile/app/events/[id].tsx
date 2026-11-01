@@ -9,23 +9,25 @@ import { eventsApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
+import type { ColorPalette } from '@/constants/DesignTokens';
 import { router } from 'expo-router';
 import { format } from 'date-fns';
+import type { Event } from '@ekusa/shared-types';
 
 interface RouteParams {
   id: string;
 }
 
 export default function EventDetailScreen({ route }: { route: { params: RouteParams } }) {
-  const { eventId } = route.params;
-  const { user, colorScheme } = useAuthStore();
-  const { colors } = useTheme();
+  const { id: eventId } = route.params;
+  const { user } = useAuthStore();
+  const { colors, colorScheme } = useTheme();
   const queryClient = useQueryClient();
   const [isRegistering, setIsRegistering] = useState(false);
 
-  const { data: event, isLoading, refetch } = useQuery({
+  const { data: event, isLoading, refetch } = useQuery<Event>({
     queryKey: ['event', eventId],
-    queryFn: () => eventsApi.get(eventId),
+    queryFn: () => eventsApi.get(eventId) as Promise<Event>,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -62,7 +64,7 @@ export default function EventDetailScreen({ route }: { route: { params: RoutePar
       return;
     }
 
-    if (event?.registrationFee > 0) {
+    if (event && event.registrationFee > 0) {
       Alert.alert(
         'Registration Fee',
         `This event has a registration fee of KES ${formatCurrency(event.registrationFee)}. Payment processing will be available in a future release.`,
@@ -264,7 +266,7 @@ export default function EventDetailScreen({ route }: { route: { params: RoutePar
   );
 }
 
-function getStatusColor(status: string, colors: typeof Colors.light): string {
+function getStatusColor(status: string, colors: ColorPalette): string {
   switch (status) {
     case 'published': return colors.success;
     case 'draft': return colors.warning;
@@ -284,9 +286,9 @@ function getDisabledReason(): string {
   return 'Registration not available';
 }
 
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-KE', {
+function formatDate(date: Date | string): string {
+  const d = new Date(date);
+  return d.toLocaleDateString('en-KE', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -294,22 +296,22 @@ function formatDate(dateString: string): string {
   });
 }
 
-function formatDateRange(startString: string, endString: string): string {
-  const start = new Date(startString);
-  const end = new Date(endString);
-  const sameDay = start.toDateString() === end.toDateString();
+function formatDateRange(start: Date | string, end: Date | string): string {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const sameDay = startDate.toDateString() === endDate.toDateString();
 
   if (sameDay) {
-    return `${start.toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long' })} • ${start.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}`;
+    return `${startDate.toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long' })} • ${startDate.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })} - ${endDate.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}`;
   }
-  return `${formatDate(startString)} - ${formatDate(endString)}`;
+  return `${formatDate(start)} - ${formatDate(end)}`;
 }
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-KE').format(amount);
 }
 
-function MetaItem({ icon, label, value, colorScheme }: { icon: string; label: string; value: string; colorScheme: typeof Colors.light }) {
+function MetaItem({ icon, label, value, colorScheme }: { icon: string; label: string; value: string; colorScheme: ColorPalette }) {
   return (
     <View style={styles.metaItem}>
       <Text style={styles.metaIcon}>{icon}</Text>

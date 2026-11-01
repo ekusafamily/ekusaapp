@@ -80,7 +80,7 @@ export function RolesPage() {
               <div style={styles.permissionGrid}>
                 {allPermissions.map(p => (
                   <label key={p} style={styles.permissionCheckbox}>
-                    <input type="checkbox" checked={formData.permissions.includes(p)} onChange={e=>setFormData(prev=>({...prev, permissions:e.target.checked?[...prev.permissions,p]:prev.permissions.filter(x=>x!==p)]})} />
+                    <input type="checkbox" checked={formData.permissions.includes(p)} onChange={e=>setFormData(prev=>({...prev, permissions:e.target.checked?[...prev.permissions,p]:prev.permissions.filter(x=>x!==p)}))} />
                     <span>{p}</span>
                   </label>
                 ))}
@@ -97,7 +97,7 @@ export function RolesPage() {
   );
 }
 
-const styles = {
+const styles: Record<string, React.CSSProperties> = {
   container:{display:'flex',flexDirection:'column',gap:'var(--spacing-lg)'},
   loading:{display:'flex',justifyContent:'center',alignItems:'center',padding:'var(--spacing-xxl)',color:'var(--color-text-secondary)'},
   header:{display:'flex',justifyContent:'space-between',alignItems:'center'},

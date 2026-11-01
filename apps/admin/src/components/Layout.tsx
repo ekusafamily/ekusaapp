@@ -21,8 +21,8 @@ export function Layout() {
 
   const handleLogout = async () => {
     try {
-      const { apiClient } = await import('@ekusa/api-client');
-      await apiClient.logout();
+      const { authApi } = await import('@ekusa/api-client');
+      await authApi.logout();
       window.location.href = '/login';
     } catch (error) {
       console.error('Logout failed:', error);
@@ -54,7 +54,7 @@ export function Layout() {
             <NavLink
               key={item.path}
               to={item.path}
-              style={({ isActive }) => ({
+              style={({ isActive }: { isActive: boolean }) => ({
                 ...styles.navLink,
                 backgroundColor: isActive ? 'var(--color-primary-container)' : 'transparent',
                 color: isActive ? 'var(--color-primary)' : 'var(--color-text-secondary)',
@@ -99,7 +99,7 @@ export function Layout() {
   );
 }
 
-const styles = {
+const styles: Record<string, React.CSSProperties> = {
   container: {
     display: 'flex',
     minHeight: '100vh',

@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Picker } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Modal } from 'react-native';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
@@ -202,68 +202,35 @@ export default function MembershipApplyScreen() {
             {errors.registrationNumber && <Text style={[styles.fieldError, { color: colors.error }]}>{errors.registrationNumber}</Text>}
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>Campus *</Text>
-            <View style={[
-              styles.pickerContainer,
-              { backgroundColor: colors.surface, borderColor: errors.campus ? colors.error : colors.border },
-            ]}>
-              <Picker
-                selectedValue={formData.campus}
-                onValueChange={(v) => handleChange('campus', v)}
-                style={styles.picker}
-                mode="dropdown"
-              >
-                <Picker.Item label="Select Campus" value="" />
-                {CAMPUSES.map(campus => (
-                  <Picker.Item key={campus} label={campus} value={campus} />
-                ))}
-              </Picker>
-            </View>
-            {errors.campus && <Text style={[styles.fieldError, { color: colors.error }]}>{errors.campus}</Text>}
-          </View>
+          <SelectField
+            label="Campus *"
+            placeholder="Select Campus"
+            value={formData.campus}
+            options={CAMPUSES}
+            onSelect={(v: string) => handleChange('campus', v)}
+            error={errors.campus}
+            colors={colors}
+          />
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>Course / Program *</Text>
-            <View style={[
-              styles.pickerContainer,
-              { backgroundColor: colors.surface, borderColor: errors.course ? colors.error : colors.border },
-            ]}>
-              <Picker
-                selectedValue={formData.course}
-                onValueChange={(v) => handleChange('course', v)}
-                style={styles.picker}
-                mode="dropdown"
-              >
-                <Picker.Item label="Select Course" value="" />
-                {COURSES.map(course => (
-                  <Picker.Item key={course} label={course} value={course} />
-                ))}
-              </Picker>
-            </View>
-            {errors.course && <Text style={[styles.fieldError, { color: colors.error }]}>{errors.course}</Text>}
-          </View>
+          <SelectField
+            label="Course / Program *"
+            placeholder="Select Course"
+            value={formData.course}
+            options={COURSES}
+            onSelect={(v: string) => handleChange('course', v)}
+            error={errors.course}
+            colors={colors}
+          />
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>Year of Study *</Text>
-            <View style={[
-              styles.pickerContainer,
-              { backgroundColor: colors.surface, borderColor: errors.yearOfStudy ? colors.error : colors.border },
-            ]}>
-              <Picker
-                selectedValue={formData.yearOfStudy}
-                onValueChange={(v) => handleChange('yearOfStudy', v)}
-                style={styles.picker}
-                mode="dropdown"
-              >
-                <Picker.Item label="Select Year" value="" />
-                {[1, 2, 3, 4, 5, 6].map(year => (
-                  <Picker.Item key={year} label={`Year ${year}`} value={year.toString()} />
-                ))}
-              </Picker>
-            </View>
-            {errors.yearOfStudy && <Text style={[styles.fieldError, { color: colors.error }]}>{errors.yearOfStudy}</Text>}
-          </View>
+          <SelectField
+            label="Year of Study *"
+            placeholder="Select Year"
+            value={formData.yearOfStudy}
+            options={[1, 2, 3, 4, 5, 6].map(year => ({ label: `Year ${year}`, value: year.toString() }))}
+            onSelect={(v: string) => handleChange('yearOfStudy', v)}
+            error={errors.yearOfStudy}
+            colors={colors}
+          />
 
           <View style={styles.inputGroup}>
             <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>Contact Information (optional)</Text>
@@ -312,7 +279,84 @@ export default function MembershipApplyScreen() {
   );
 }
 
-function RequirementItem({ text, colorScheme }: { text: string; colorScheme: typeof Colors.light }) {
+function SelectField({
+  label,
+  value,
+  placeholder,
+  options,
+  onSelect,
+  error,
+  colors,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  options: { label: string; value: string }[] | string[];
+  onSelect: (val: string) => void;
+  error?: string;
+  colors: typeof Colors.light | typeof Colors.dark;
+}) {
+  const [modalVisible, setModalVisible] = useState(false);
+  const normalizedOptions = options.map(opt => typeof opt === 'string' ? { label: opt, value: opt } : opt);
+  const selectedLabel = normalizedOptions.find(o => o.value === value)?.label;
+
+  return (
+    <View style={styles.inputGroup}>
+      <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>{label}</Text>
+      <TouchableOpacity
+        style={[
+          styles.selectTrigger,
+          { backgroundColor: colors.surface, borderColor: error ? colors.error : colors.border },
+        ]}
+        onPress={() => setModalVisible(true)}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.selectValueText, { color: value ? colors.textPrimary : colors.textTertiary }]}>
+          {selectedLabel || placeholder}
+        </Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>▼</Text>
+      </TouchableOpacity>
+      {error ? <Text style={[styles.fieldError, { color: colors.error }]}>{error}</Text> : null}
+
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setModalVisible(false)}
+        >
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{placeholder}</Text>
+            <ScrollView style={{ maxHeight: 260 }}>
+              {normalizedOptions.map(opt => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.modalOption,
+                    { borderBottomColor: colors.border },
+                    opt.value === value && { backgroundColor: colors.primaryContainer },
+                  ]}
+                  onPress={() => {
+                    onSelect(opt.value);
+                    setModalVisible(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.modalOptionText,
+                    { color: opt.value === value ? colors.primary : colors.textPrimary }
+                  ]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
+  );
+}
+
+function RequirementItem({ text, colorScheme }: { text: string; colorScheme: typeof Colors.light | typeof Colors.dark }) {
   return (
     <View style={styles.requirementRow}>
       <View style={[styles.requirementDot, { backgroundColor: colorScheme.primary }]} />
@@ -419,15 +463,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     fontSize: Typography.sizes.md,
   },
-  pickerContainer: {
+  selectTrigger: {
+    height: 52,
     borderWidth: 1,
     borderRadius: BorderRadius.md,
-    overflow: 'hidden',
+    paddingHorizontal: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  picker: {
-    height: 52,
+  selectValueText: {
+    fontSize: Typography.sizes.md,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
+  },
+  modalContent: {
     width: '100%',
-    color: colors.textPrimary,
+    maxWidth: 400,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.bold,
+    marginBottom: Spacing.md,
+  },
+  modalOption: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.sm,
+    borderBottomWidth: 1,
+  },
+  modalOptionText: {
+    fontSize: Typography.sizes.md,
   },
   fieldError: {
     fontSize: Typography.sizes.xs,

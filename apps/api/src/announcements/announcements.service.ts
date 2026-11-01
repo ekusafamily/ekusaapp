@@ -24,8 +24,8 @@ interface CreateAnnouncementData {
   category: string;
   priority: string;
   targets: AnnouncementTarget[];
-  scheduledAt?: Date;
-  expiresAt?: Date;
+  scheduledAt?: Date | string;
+  expiresAt?: Date | string;
   pinned?: boolean;
 }
 
@@ -79,7 +79,7 @@ export class AnnouncementsService {
     ]);
 
     return {
-      items: items.map(item => ({
+      items: items.map((item: any) => ({
         ...item,
         publisherName: item.publisher.profile?.displayName || item.publisher.username,
         readCount: item._count.reads,
@@ -164,8 +164,8 @@ export class AnnouncementsService {
         priority: data.priority as any,
         publisherId,
         status: 'draft',
-        scheduledAt: data.scheduledAt,
-        expiresAt: data.expiresAt,
+        scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
         pinned: data.pinned || false,
         targets: {
           create: data.targets.map(t => ({ targetType: t.type as any, targetValue: t.value })),
@@ -204,8 +204,8 @@ export class AnnouncementsService {
         body: data.body,
         category: data.category as any,
         priority: data.priority as any,
-        scheduledAt: data.scheduledAt,
-        expiresAt: data.expiresAt,
+        scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
         pinned: data.pinned,
         targets: data.targets ? {
           deleteMany: {},

@@ -1,16 +1,16 @@
 /**
  * EKUSA Digital Platform - Users Service
- * User profile management and search
+ * User profile management and search with Supabase Storage integration
  */
 
 import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
+import { StorageService } from '../storage/storage.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -18,6 +18,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly storageService: StorageService,
   ) {}
 
   async getProfile(userId: string) {
@@ -44,7 +45,6 @@ export class UsersService {
     course?: string;
     yearOfStudy?: number | null;
   }) {
-    // Update or create profile
     const profile = await this.prisma.profile.upsert({
       where: { userId },
       update: {
@@ -128,7 +128,7 @@ export class UsersService {
     });
 
     return {
-      items: users.map(u => this.sanitizePublicUser(u)),
+      items: users.map((u: any) => this.sanitizePublicUser(u)),
       total,
       page: Math.floor(offset / limit) + 1,
       limit,
@@ -137,15 +137,13 @@ export class UsersService {
   }
 
   async uploadAvatar(userId: string, file: Express.Multer.File): Promise<string> {
-    // In production, upload to S3/MinIO and return the object key
-    // For now, generate a mock object key
     const ext = file.originalname.split('.').pop() || 'jpg';
     const objectKey = `avatars/${userId}/${crypto.randomUUID()}.${ext}`;
 
-    // TODO: Actually upload to S3
-    // await this.s3Service.upload(objectKey, file.buffer, file.mimetype);
+    // Upload to Supabase Storage bucket 'ekusa-storage'
+    await this.storageService.uploadFile('ekusa-storage', objectKey, file.buffer, file.mimetype, false);
 
-    // Update profile with new avatar
+    // Update profile with avatar object key
     await this.prisma.profile.update({
       where: { userId },
       data: { avatarObjectKey: objectKey },
@@ -154,10 +152,8 @@ export class UsersService {
     return objectKey;
   }
 
-  async getAvatarUrl(objectKey: string): string {
-    const s3Endpoint = this.configService.get<string>('S3_ENDPOINT') || 'http://localhost:9000';
-    const bucket = this.configService.get<string>('S3_BUCKET') || 'ekusa';
-    return `${s3Endpoint}/${bucket}/${objectKey}`;
+  async getAvatarUrl(objectKey: string): Promise<string> {
+    return this.storageService.getPublicUrl('ekusa-storage', objectKey);
   }
 
   private sanitizeUser(user: any) {
@@ -171,13 +167,12 @@ export class UsersService {
   }
 
   private sanitizePublicUser(user: any) {
-    const { passwordHash, email, phoneNumber, accountStatus, createdAt, updatedAt, ...sanitized } = user;
     return {
       id: user.id,
       username: user.username,
       displayName: user.profile?.displayName || user.username,
       bio: user.profile?.bio,
-      avatarUrl: user.profile?.avatarObjectKey ? this.getAvatarUrl(user.profile.avatarObjectKey) : null,
+      avatarUrl: user.profile?.avatarObjectKey ? `https://${this.configService.get<string>('SUPABASE_URL')?.replace('https://', '')}/storage/v1/object/public/ekusa-storage/${user.profile.avatarObjectKey}` : null,
       campus: user.profile?.campus,
       course: user.profile?.course,
       yearOfStudy: user.profile?.yearOfStudy,

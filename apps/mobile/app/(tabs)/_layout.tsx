@@ -47,7 +47,7 @@ export default function TabLayout() {
           tabBarIcon: ({ focused, color, size }) => (
             <ChatIcon focused={focused} color={color} size={size} />
           ),
-          badge: user ? undefined : '!',
+          tabBarBadge: user ? undefined : '!',
         }}
       />
       <Tabs.Screen

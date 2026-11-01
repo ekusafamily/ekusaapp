@@ -38,9 +38,9 @@ export class LeadershipService {
       },
     });
 
-    return positions.map(pos => ({
+    return positions.map((pos: any) => ({
       ...pos,
-      leaders: pos.leaders.map(l => ({
+      leaders: pos.leaders.map((l: any) => ({
         ...l,
         userName: l.user.profile?.displayName || l.user.username,
         userAvatarUrl: l.user.profile?.avatarObjectKey,

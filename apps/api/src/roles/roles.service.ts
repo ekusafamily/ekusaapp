@@ -30,11 +30,9 @@ export class RolesService {
   }
 
   async create(adminUserId: string, data: { name: string; displayName: string; description?: string; permissions: string[] }) {
-    // Check if role name exists
     const existing = await this.prisma.role.findUnique({ where: { name: data.name } });
     if (existing) throw new ConflictException('Role name already exists');
 
-    // Validate permissions exist
     const permissions = await this.prisma.permission.findMany({
       where: { name: { in: data.permissions } },
     });
@@ -48,6 +46,7 @@ export class RolesService {
         name: data.name,
         displayName: data.displayName,
         description: data.description,
+        permissions: data.permissions,
         rolePermissions: {
           create: permissions.map(p => ({ permissionId: p.id })),
         },
@@ -87,7 +86,7 @@ export class RolesService {
       adminUserId,
       action: 'role_assigned',
       targetType: 'user_role',
-      targetId: userRole.id,
+      targetId: `${userId}_${roleId}`,
       changes: { role: { before: null, after: role.name } },
     });
 
@@ -101,13 +100,15 @@ export class RolesService {
 
     if (!userRole) throw new NotFoundException('User does not have this role');
 
-    await this.prisma.userRole.delete({ where: { id: userRole.id } });
+    await this.prisma.userRole.delete({
+      where: { userId_roleId: { userId, roleId } },
+    });
 
     await this.auditService.log({
       adminUserId,
       action: 'role_revoked',
       targetType: 'user_role',
-      targetId: userRole.id,
+      targetId: `${userId}_${roleId}`,
       changes: { role: { before: userRole.roleId, after: null } },
     });
 
