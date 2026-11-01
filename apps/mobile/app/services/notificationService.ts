@@ -6,6 +6,7 @@
 import React from 'react';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { apiClient } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
@@ -168,11 +169,13 @@ export class NotificationService {
     }
 
     try {
-      const token = (await Notifications.getExpoPushTokenAsync({
-        projectId: 'your-expo-project-id', // Replace with your Expo project ID
-      })).data;
+      const tokenResponse = await Notifications.getDevicePushTokenAsync();
+      const token = typeof tokenResponse.data === 'string' ? tokenResponse.data : JSON.stringify(tokenResponse.data);
 
-      console.log('Expo push token:', token);
+
+
+
+      console.log('FCM device push token:', token);
       return token;
     } catch (error) {
       console.error('Failed to get push token:', error);

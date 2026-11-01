@@ -69,8 +69,20 @@ Thumbs.db
 /captures
 .externalNativeBuild
 .cxx
+# Android build outputs
+apps/mobile/android/app/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/app/.cxx/
+
+# Turbo cache per-package
+packages/**/.turbo/
 
 # Database local files
 *.sqlite
 *.sqlite-journal
 uploads/
+
+# Firebase & Cloud Credentials
+google-services.json
+*service-account*.json
+firebase-service-account.json

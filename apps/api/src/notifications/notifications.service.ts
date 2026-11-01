@@ -3,7 +3,11 @@
  * Notification management and FCM integration
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { App, initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
+import * as fs from 'fs';
+import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 
@@ -17,13 +21,58 @@ interface NotificationData {
 }
 
 @Injectable()
-export class NotificationsService {
+export class NotificationsService implements OnModuleInit {
+  private firebaseApp: App | null = null;
   private readonly logger = new Logger(NotificationsService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {}
+
+  onModuleInit() {
+    this.initFirebase();
+  }
+
+  private initFirebase() {
+    try {
+      const existingApps = getApps();
+      if (existingApps.length > 0) {
+        this.firebaseApp = existingApps[0]!;
+        return;
+      }
+
+      const serviceAccountPath = this.configService.get<string>('FIREBASE_SERVICE_ACCOUNT_PATH');
+      const serviceAccountJson = this.configService.get<string>('FIREBASE_SERVICE_ACCOUNT_JSON');
+
+      let credentialObj: any = null;
+
+      if (serviceAccountJson) {
+        const parsed = JSON.parse(serviceAccountJson);
+        credentialObj = cert(parsed);
+      } else if (serviceAccountPath) {
+        const resolvedPath = path.isAbsolute(serviceAccountPath)
+          ? serviceAccountPath
+          : path.resolve(process.cwd(), serviceAccountPath);
+
+        if (fs.existsSync(resolvedPath)) {
+          const fileContent = fs.readFileSync(resolvedPath, 'utf8');
+          credentialObj = cert(JSON.parse(fileContent));
+        } else {
+          this.logger.warn(`Firebase service account file not found at: ${resolvedPath}`);
+        }
+      }
+
+      if (credentialObj) {
+        this.firebaseApp = initializeApp({ credential: credentialObj });
+        this.logger.log('Firebase Admin initialized successfully with FCM V1');
+      } else {
+        this.logger.warn('Firebase Admin not initialized: Set FIREBASE_SERVICE_ACCOUNT_PATH or FIREBASE_SERVICE_ACCOUNT_JSON in .env');
+      }
+    } catch (error) {
+      this.logger.error('Failed to initialize Firebase Admin', error);
+    }
+  }
 
   async create(data: NotificationData) {
     // Create notification record
@@ -104,10 +153,44 @@ export class NotificationsService {
 
     const pushTokens = devices.map((d: any) => d.pushToken!).filter(Boolean);
 
-    // In production, send to FCM
-    // For now, just log
-    this.logger.log(`Would send push notification to ${pushTokens.length} devices for user ${userId}`);
-    this.logger.debug(`Notification: ${notification.title} - ${notification.body}`);
+    if (pushTokens.length === 0) return;
+    if (!this.firebaseApp) {
+      this.logger.warn(`Firebase Admin not initialized. Skipping FCM send to ${pushTokens.length} devices.`);
+      return;
+    }
+    try {
+      const stringData: Record<string, string> = {};
+      if (notification.data && typeof notification.data === 'object') {
+        for (const [key, val] of Object.entries(notification.data)) {
+          stringData[key] = typeof val === 'string' ? val : JSON.stringify(val);
+        }
+      }
+      stringData.notificationId = notification.id || '';
+      stringData.category = notification.category || 'default';
+
+      const response = await getMessaging(this.firebaseApp).sendEachForMulticast({
+        tokens: pushTokens,
+        notification: {
+          title: notification.title,
+          body: notification.body,
+        },
+        data: stringData,
+        android: {
+          priority: notification.priority === 'urgent' || notification.priority === 'high' ? 'high' : 'normal',
+          notification: {
+            channelId: notification.category || 'default',
+            sound: 'default',
+          },
+        },
+      });
+
+      this.logger.log(`FCM Multicast sent: ${response.successCount} succeeded, ${response.failureCount} failed`);
+    } catch (error) {
+      this.logger.error(`Error sending FCM push notification to user ${userId}`, error);
+    }
+
+
+
   }
 
   async broadcastToAudience(data: {
