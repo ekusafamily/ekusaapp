@@ -31,18 +31,17 @@ let isRefreshing = false;
 let refreshSubscribers: Array<(token: string) => void> = [];
 
 function getStoredTokens(): { accessToken: string | null; refreshToken: string | null } {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
     return {
       accessToken: localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN),
       refreshToken: localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN),
     };
   }
-  // For React Native, use AsyncStorage or SecureStore
   return { accessToken: null, refreshToken: null };
 }
 
 function setStoredTokens(newAccessToken: string | null, newRefreshToken: string | null): void {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
     if (newAccessToken) localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, newAccessToken);
     else localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
     if (newRefreshToken) localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
