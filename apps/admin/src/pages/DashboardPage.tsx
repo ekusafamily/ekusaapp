@@ -22,7 +22,7 @@ export function DashboardPage() {
     const fetchStats = async () => {
       try {
         const response = await apiClient.get('/admin/dashboard');
-        setStats(response.data.data);
+        setStats(response.data?.data ?? response.data);
       } catch (err: any) {
         setError('Failed to load dashboard statistics');
       } finally {
@@ -73,12 +73,12 @@ export function DashboardPage() {
         <div style={styles.chartCard}>
           <h3 style={styles.chartTitle}>Recent Announcements</h3>
           <div style={styles.announcementList}>
-            {stats?.recentAnnouncements?.slice(0, 5).map((ann: any) => (
+            {Array.isArray(stats?.recentAnnouncements) && stats.recentAnnouncements.slice(0, 5).map((ann: any) => (
               <div key={ann.id} style={styles.announcementItem}>
                 <div style={styles.announcementInfo}>
                   <span style={styles.announcementTitle}>{ann.title}</span>
                   <span style={styles.announcementMeta}>
-                    {ann.priority} • {new Date(ann.publishedAt).toLocaleDateString()}
+                    {ann.priority} • {ann.publishedAt ? new Date(ann.publishedAt).toLocaleDateString() : 'Draft'}
                   </span>
                 </div>
               </div>

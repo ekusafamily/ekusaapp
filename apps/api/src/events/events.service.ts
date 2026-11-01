@@ -34,7 +34,9 @@ export class EventsService {
     sortOrder?: string;
     userId?: string;
   }) {
-    const { category, status, campus, upcoming, page = 1, limit = 20, sortBy = 'startAt', sortOrder = 'asc', userId } = params;
+    const { category, status, campus, upcoming, sortBy = 'startAt', sortOrder = 'asc', userId } = params;
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.max(1, Number(params.limit) || 20);
 
     const where: any = {};
     if (category && category !== 'all') where.category = category as EventCategory;
@@ -292,7 +294,8 @@ export class EventsService {
     const event = await this.prisma.event.findUnique({ where: { id: eventId } });
     if (!event) throw new NotFoundException('Event not found');
 
-    const { page = 1, limit = 50 } = params;
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.max(1, Number(params.limit) || 50);
 
     const [items, total] = await Promise.all([
       this.prisma.eventRegistration.findMany({

@@ -263,3 +263,4 @@ yarn workspace @ekusa/mobile typecheck
 - **GitHub:** `https://github.com/ekusafamily/ekusaapp.git`
 - **Branch:** `main`
 - **Version Tag:** `v1.001`
+

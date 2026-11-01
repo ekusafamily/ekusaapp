@@ -18,7 +18,7 @@ interface QuickActionButtonProps {
 
 type IconName = 'megaphone' | 'calendar' | 'users' | 'badge' | 'mail' | 'settings' | 'notification' | 'search' | 'plus';
 
-const ICON_MAP: Record<string, React.ComponentType<{ size: number; color: string }>> = {
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
   megaphone: Megaphone,
   calendar: Calendar,
   users: Users,

@@ -47,7 +47,9 @@ export class AuditService {
     limit?: number;
     sortOrder?: 'asc' | 'desc';
   }) {
-    const { adminUserId, action, targetType, targetId, startDate, endDate, page = 1, limit = 50, sortOrder = 'desc' } = params;
+    const { adminUserId, action, targetType, targetId, startDate, endDate, sortOrder = 'desc' } = params;
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.max(1, Number(params.limit) || 50);
 
     const where: any = {};
     if (adminUserId) where.adminUserId = adminUserId;

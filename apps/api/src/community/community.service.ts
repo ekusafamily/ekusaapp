@@ -21,7 +21,9 @@ export class CommunityService {
   ) {}
 
   async list(params: { type?: string; isPublic?: boolean; page?: number; limit?: number }) {
-    const { type, isPublic, page = 1, limit = 20 } = params;
+    const { type, isPublic } = params;
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.max(1, Number(params.limit) || 20);
 
     const where: any = {};
     if (type && type !== 'all') where.type = type as CommunityType;

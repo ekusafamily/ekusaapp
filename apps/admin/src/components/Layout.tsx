@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, Tag, Megaphone, Calendar, HeartHandshake, Globe, GraduationCap, ShieldCheck, ClipboardList, Settings, LogOut } from 'lucide-react';
+import { apiClient, clearAuth } from '../lib/apiClient';
 
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
@@ -22,12 +23,12 @@ export function Layout() {
 
   const handleLogout = async () => {
     try {
-      const { authApi } = await import('@ekusa/api-client');
-      await authApi.logout();
-      window.location.href = '/login';
+      await apiClient.post('/auth/logout');
     } catch (error) {
       console.error('Logout failed:', error);
     }
+    clearAuth();
+    window.location.href = '/login';
   };
 
   return (

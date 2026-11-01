@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { authApi, isAuthenticated, clearAuth } from '@ekusa/api-client';
+import { isAuthenticated, clearAuth, apiClient } from './lib/apiClient';
 import { Layout } from './components/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -26,7 +26,7 @@ export function App() {
     const checkAuth = async () => {
       if (isAuthenticated()) {
         try {
-          await authApi.getCurrentUser();
+          await apiClient.get('/users/me');
         } catch {
           clearAuth();
         }

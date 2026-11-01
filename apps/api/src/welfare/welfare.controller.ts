@@ -46,7 +46,7 @@ export class WelfareController {
     return this.welfareService.getMyRequests(req.user.sub, params);
   }
 
-  // Admin endpoints
+  // Admin endpoints (nested under welfare)
   @Get('admin/welfare/requests')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin', 'welfare_officer', 'chairperson', 'vice_chairperson')
@@ -66,6 +66,39 @@ export class WelfareController {
   }
 
   @Post('admin/welfare/requests/:id/updates')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'welfare_officer')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Add update to welfare request (admin)' })
+  async addUpdate(@Param('id') id: string, @Request() req: any, @Body() data: { message: string }) {
+    return this.welfareService.addUpdate(id, req.user.sub, data.message);
+  }
+}
+
+@ApiTags('Admin - Welfare')
+@Controller('admin/welfare')
+export class AdminWelfareController {
+  constructor(private readonly welfareService: WelfareService) {}
+
+  @Get('requests')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'welfare_officer', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List welfare requests (admin)' })
+  async list(@Query() params: { status?: string; category?: string; page?: number; limit?: number }) {
+    return this.welfareService.list(params);
+  }
+
+  @Patch('requests/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'welfare_officer')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Update welfare request (admin)' })
+  async update(@Param('id') id: string, @Request() req: any, @Body() data: { status?: string; assignedOfficerId?: string | null }) {
+    return this.welfareService.update(id, req.user.sub, data);
+  }
+
+  @Post('requests/:id/updates')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin', 'welfare_officer')
   @ApiBearerAuth('access-token')

@@ -44,6 +44,7 @@ function clearTokens(): void {
   accessToken = null;
   refreshToken = null;
   setStoredTokens(null, null);
+  delete apiClient.defaults.headers.common['Authorization'];
 }
 
 // Initialize from storage
@@ -85,7 +86,8 @@ apiClient.interceptors.response.use(
           const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
             refreshToken,
           });
-          const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data.data;
+          const tokens = response.data?.tokens || response.data?.data?.tokens || response.data?.data || response.data;
+          const { accessToken: newAccessToken, refreshToken: newRefreshToken } = tokens;
           accessToken = newAccessToken;
           refreshToken = newRefreshToken;
           setStoredTokens(newAccessToken, newRefreshToken);
@@ -118,19 +120,18 @@ apiClient.interceptors.response.use(
   }
 );
 
-// Helper functions
-export function handleResponse<T = any>(response: { data: { success: boolean; data?: T; error?: { code: string; message: string } } }): T {
-  if (!response.data.success) {
+export function handleResponse<T = any>(response: { data: any }): T {
+  if (response.data && response.data.success === false) {
     throw new ApiError(
       response.data.error?.code || 'API_ERROR',
       response.data.error?.message || 'Request failed',
       0
     );
   }
-  if (response.data.data === undefined) {
-    throw new ApiError('NO_DATA', 'Response contains no data', 0);
+  if (response.data && response.data.data !== undefined) {
+    return response.data.data as T;
   }
-  return response.data.data;
+  return response.data as T;
 }
 
 export class ApiError extends Error {
@@ -158,13 +159,36 @@ export class ApiError extends Error {
   }
 }
 
+export function setTokens(newAccessToken: string | null, newRefreshToken: string | null) {
+  accessToken = newAccessToken;
+  refreshToken = newRefreshToken;
+  setStoredTokens(newAccessToken, newRefreshToken);
+  if (newAccessToken) {
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+  } else {
+    delete apiClient.defaults.headers.common['Authorization'];
+  }
+}
+
 export function setAccessToken(token: string | null) {
   accessToken = token;
   setStoredTokens(token, refreshToken);
+  if (token) {
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete apiClient.defaults.headers.common['Authorization'];
+  }
 }
 
 export function getAccessToken() { return accessToken; }
 
-export function isAuthenticated() { return !!accessToken; }
+export function isAuthenticated() {
+  if (!accessToken) {
+    const stored = getStoredTokens();
+    accessToken = stored.accessToken;
+    refreshToken = stored.refreshToken;
+  }
+  return !!accessToken;
+}
 
 export function clearAuth() { clearTokens(); }

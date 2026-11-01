@@ -24,7 +24,7 @@ export class AdminService {
       this.prisma.user.count(),
       this.prisma.user.count({ where: { accountStatus: 'verified_member' } }),
       this.prisma.membership.count({ where: { membershipStatus: 'pending' } }),
-      this.prisma.announcement.count({ where: { status: 'published' }, orderBy: { publishedAt: 'desc' }, take: 5 }),
+      this.prisma.announcement.findMany({ where: { status: 'published' }, orderBy: { publishedAt: 'desc' }, take: 5 }),
       this.prisma.event.count({ where: { status: 'published', startAt: { gte: new Date() } } }),
       this.prisma.eventRegistration.count({ where: { registrationStatus: 'registered' } }),
       this.prisma.welfareRequest.count({ where: { status: { in: ['submitted', 'under_review', 'in_progress'] } } }),

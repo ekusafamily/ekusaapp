@@ -53,7 +53,9 @@ export class WelfareService {
   }
 
   async getMyRequests(userId: string, params: { status?: string; page?: number; limit?: number }) {
-    const { status, page = 1, limit = 20 } = params;
+    const { status } = params;
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.max(1, Number(params.limit) || 20);
 
     const where: any = { userId };
     if (status && status !== 'all') where.status = status;
@@ -83,7 +85,9 @@ export class WelfareService {
   }
 
   async list(params: { status?: string; category?: string; page?: number; limit?: number }) {
-    const { status, category, page = 1, limit = 20 } = params;
+    const { status, category } = params;
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.max(1, Number(params.limit) || 20);
 
     const where: any = {};
     if (status && status !== 'all') where.status = status;

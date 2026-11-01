@@ -132,3 +132,81 @@ export class AnnouncementsController {
     return this.announcementsService.list({ ...params, status: params.status || 'all' });
   }
 }
+
+@ApiTags('Admin - Announcements')
+@Controller('admin/announcements')
+export class AdminAnnouncementsController {
+  constructor(private readonly announcementsService: AnnouncementsService) {}
+
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'communication_officer', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List all announcements (admin)' })
+  async list(@Query() params: { status?: string; page?: number; limit?: number }) {
+    return this.announcementsService.list({ ...params, status: params.status || 'all' });
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'communication_officer', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Create announcement (admin)' })
+  async create(@Request() req: any, @Body() data: {
+    title: string;
+    body: string;
+    category: string;
+    priority: string;
+    targets: Array<{ type: string; value: string }>;
+    scheduledAt?: string;
+    expiresAt?: string;
+    pinned?: boolean;
+  }) {
+    return this.announcementsService.create(data, req.user.sub);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'communication_officer', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Update announcement (admin)' })
+  async update(@Param('id') id: string, @Request() req: any, @Body() data: Partial<{
+    title: string;
+    body: string;
+    category: string;
+    priority: string;
+    targets: Array<{ type: string; value: string }>;
+    scheduledAt?: string;
+    expiresAt?: string;
+    pinned?: boolean;
+  }>) {
+    return this.announcementsService.update(id, data, req.user.sub);
+  }
+
+  @Post(':id/publish')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'communication_officer', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Publish announcement (admin)' })
+  async publish(@Param('id') id: string, @Request() req: any) {
+    return this.announcementsService.publish(id, req.user.sub);
+  }
+
+  @Post(':id/archive')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'communication_officer', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Archive announcement (admin)' })
+  async archive(@Param('id') id: string, @Request() req: any) {
+    return this.announcementsService.archive(id, req.user.sub);
+  }
+
+  @Get(':id/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'communication_officer', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get announcement statistics (admin)' })
+  async getStats(@Param('id') id: string, @Request() req: any) {
+    return this.announcementsService.getStats(id, req.user.sub);
+  }
+}

@@ -137,3 +137,94 @@ export class EventsController {
     return this.eventsService.recordAttendance(id, data.userId, data.attendanceStatus, req.user.sub);
   }
 }
+
+@ApiTags('Admin - Events')
+@Controller('admin/events')
+export class AdminEventsController {
+  constructor(private readonly eventsService: EventsService) {}
+
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'event_coordinator', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List events (admin)' })
+  async list(@Query() params: {
+    category?: string;
+    status?: string;
+    campus?: string;
+    upcoming?: boolean;
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: string;
+  }) {
+    return this.eventsService.list(params);
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'event_coordinator', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Create event (admin)' })
+  async create(@Request() req: any, @Body() data: {
+    title: string;
+    description: string;
+    category: string;
+    venue: string;
+    startAt: string;
+    endAt: string;
+    registrationDeadline: string;
+    capacity?: number;
+    eligibility?: string;
+    registrationFee: number;
+  }) {
+    return this.eventsService.create({
+      ...data,
+      startAt: new Date(data.startAt),
+      endAt: new Date(data.endAt),
+      registrationDeadline: new Date(data.registrationDeadline),
+    }, req.user.sub);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'event_coordinator', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Update event (admin)' })
+  async update(@Param('id') id: string, @Request() req: any, @Body() data: Partial<{
+    title: string;
+    description: string;
+    category: string;
+    venue: string;
+    startAt: string;
+    endAt: string;
+    registrationDeadline: string;
+    capacity?: number;
+    eligibility?: string;
+    registrationFee: number;
+  }>) {
+    const parsedData: any = { ...data };
+    if (data.startAt) parsedData.startAt = new Date(data.startAt);
+    if (data.endAt) parsedData.endAt = new Date(data.endAt);
+    if (data.registrationDeadline) parsedData.registrationDeadline = new Date(data.registrationDeadline);
+    return this.eventsService.update(id, parsedData, req.user.sub);
+  }
+
+  @Get(':id/participants')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'event_coordinator', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get event participants (admin)' })
+  async getParticipants(@Param('id') id: string, @Request() req: any, @Query() params: { page?: number; limit?: number }) {
+    return this.eventsService.getParticipants(id, req.user.sub, params);
+  }
+
+  @Patch(':id/attendance')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'event_coordinator')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Record attendance (admin)' })
+  async recordAttendance(@Param('id') id: string, @Request() req: any, @Body() data: { userId: string; attendanceStatus: 'present' | 'absent' | 'excused' }) {
+    return this.eventsService.recordAttendance(id, data.userId, data.attendanceStatus, req.user.sub);
+  }
+}

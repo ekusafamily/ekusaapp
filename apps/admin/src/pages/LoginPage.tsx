@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { apiClient, ApiError } from '../lib/apiClient';
+import { apiClient, ApiError, setTokens } from '../lib/apiClient';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -19,13 +19,17 @@ export function LoginPage() {
 
     try {
       const response = await apiClient.post('/auth/login', { identifier, password });
-      const { accessToken, refreshToken } = response.data.data.tokens;
+      const tokens = response.data?.tokens || response.data?.data?.tokens;
+      if (!tokens) {
+        throw new Error('Invalid response structure: tokens missing');
+      }
+      const { accessToken, refreshToken } = tokens;
 
-      // Store tokens
-      localStorage.setItem('ekusa_admin_access_token', accessToken);
-      localStorage.setItem('ekusa_admin_refresh_token', refreshToken);
+      // Store tokens and update client state
+      setTokens(accessToken, refreshToken);
 
-      navigate(from, { replace: true });
+      const target = from && from !== '/login' ? from : '/dashboard';
+      navigate(target, { replace: true });
     } catch (err: any) {
       if (err instanceof ApiError) {
         setError(err.message);

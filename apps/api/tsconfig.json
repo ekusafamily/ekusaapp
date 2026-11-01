@@ -8,6 +8,7 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "outDir": "./dist",
+    "noEmit": false,
     "strictPropertyInitialization": false,
     "baseUrl": ".",
     "paths": {

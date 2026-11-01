@@ -4,7 +4,7 @@
  */
 
 import { Module } from '@nestjs/common';
-import { MembershipController } from './membership.controller';
+import { MembershipController, AdminMembershipController } from './membership.controller';
 import { MembershipService } from './membership.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
@@ -12,7 +12,7 @@ import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [PrismaModule, AuthModule, AuditModule],
-  controllers: [MembershipController],
+  controllers: [MembershipController, AdminMembershipController],
   providers: [MembershipService],
   exports: [MembershipService],
 })

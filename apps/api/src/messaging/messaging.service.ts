@@ -318,7 +318,8 @@ export class MessagingService {
   }
 
   async getPendingMessages(userId: string, params: { limit?: number; beforeMessageId?: string }) {
-    const { limit = 50, beforeMessageId } = params;
+    const limit = Math.max(1, Number(params.limit) || 50);
+    const { beforeMessageId } = params;
 
     const where: any = { recipientUserId: userId };
     if (beforeMessageId) {

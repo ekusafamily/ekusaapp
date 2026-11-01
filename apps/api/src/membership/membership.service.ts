@@ -125,7 +125,9 @@ export class MembershipService {
     sortBy?: string;
     sortOrder?: string;
   }) {
-    const { status, campus, page = 1, limit = 20, sortBy = 'submittedAt', sortOrder = 'desc' } = params;
+    const { status, campus, sortBy = 'submittedAt', sortOrder = 'desc' } = params;
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.max(1, Number(params.limit) || 20);
 
     const where: any = {};
     if (status && status !== 'all') {

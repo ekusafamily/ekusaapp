@@ -47,7 +47,9 @@ export class AnnouncementsService {
     sortOrder?: string;
     userId?: string; // For audience resolution
   }) {
-    const { category, status, priority, page = 1, limit = 20, sortBy = 'publishedAt', sortOrder = 'desc', userId } = params;
+    const { category, status, priority, sortBy = 'publishedAt', sortOrder = 'desc', userId } = params;
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.max(1, Number(params.limit) || 20);
 
     const where: any = {};
     if (category && category !== 'all') where.category = category;

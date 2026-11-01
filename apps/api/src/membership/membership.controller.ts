@@ -98,3 +98,55 @@ export class MembershipController {
     return this.membershipService.reject(id, req.user.sub, data.rejectionReason);
   }
 }
+
+@ApiTags('Admin - Membership')
+@Controller('admin/memberships')
+export class AdminMembershipController {
+  constructor(private readonly membershipService: MembershipService) {}
+
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'membership_officer', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List membership applications (admin)' })
+  async listApplications(@Query() params: {
+    status?: string;
+    campus?: string;
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: string;
+  }) {
+    return this.membershipService.listApplications(params);
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'membership_officer', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'View membership application detail (admin)' })
+  async getApplication(@Param('id') id: string) {
+    return this.membershipService.getApplication(id);
+  }
+
+  @Patch(':id/approve')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'membership_officer')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Approve membership application (admin)' })
+  async approve(@Param('id') id: string, @Request() req: any) {
+    return this.membershipService.approve(id, req.user.sub);
+  }
+
+  @Patch(':id/reject')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'membership_officer')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Reject membership application (admin)' })
+  async reject(@Param('id') id: string, @Request() req: any, @Body() data: { rejectionReason: string }) {
+    if (!data.rejectionReason || data.rejectionReason.trim().length === 0) {
+      throw new ForbiddenException('Rejection reason is required');
+    }
+    return this.membershipService.reject(id, req.user.sub, data.rejectionReason);
+  }
+}

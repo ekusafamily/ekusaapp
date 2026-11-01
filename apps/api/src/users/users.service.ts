@@ -112,8 +112,8 @@ export class UsersService {
           },
         },
       },
-      take: limit,
-      skip: offset,
+      take: Number(limit) || 20,
+      skip: Number(offset) || 0,
       orderBy: { createdAt: 'desc' },
     });
 

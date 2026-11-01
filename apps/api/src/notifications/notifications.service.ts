@@ -51,9 +51,16 @@ export class NotificationsService implements OnModuleInit {
         const parsed = JSON.parse(serviceAccountJson);
         credentialObj = cert(parsed);
       } else if (serviceAccountPath) {
-        const resolvedPath = path.isAbsolute(serviceAccountPath)
+        let resolvedPath = path.isAbsolute(serviceAccountPath)
           ? serviceAccountPath
           : path.resolve(process.cwd(), serviceAccountPath);
+
+        if (!fs.existsSync(resolvedPath)) {
+          const rootFallback = path.resolve(process.cwd(), '../../', serviceAccountPath);
+          if (fs.existsSync(rootFallback)) {
+            resolvedPath = rootFallback;
+          }
+        }
 
         if (fs.existsSync(resolvedPath)) {
           const fileContent = fs.readFileSync(resolvedPath, 'utf8');
@@ -94,7 +101,9 @@ export class NotificationsService implements OnModuleInit {
   }
 
   async list(userId: string, params: { category?: string; unreadOnly?: boolean; page?: number; limit?: number }) {
-    const { category, unreadOnly, page = 1, limit = 20 } = params;
+    const { category, unreadOnly } = params;
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.max(1, Number(params.limit) || 20);
 
     const where: any = { userId };
     if (category && category !== 'all') where.category = category;

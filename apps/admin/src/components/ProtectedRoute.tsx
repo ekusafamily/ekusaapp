@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { apiClient, isAuthenticated } from '@ekusa/api-client';
+import { isAuthenticated } from '../lib/apiClient';
 
 export function ProtectedRoute() {
   const location = useLocation();

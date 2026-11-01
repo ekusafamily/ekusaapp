@@ -156,7 +156,7 @@ export class AuthService {
       where: { refreshToken },
     });
 
-    if (!session || session.userId !== userId) {
+    if (!session || (userId && session.userId !== userId)) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
@@ -169,8 +169,9 @@ export class AuthService {
     }
 
     // Get user
+    const targetUserId = userId || session.userId;
     const user = await this.prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: targetUserId },
     });
 
     if (!user) {
@@ -197,7 +198,7 @@ export class AuthService {
       where: { refreshToken },
     });
 
-    if (session && session.userId === userId) {
+    if (session && (!userId || session.userId === userId)) {
       await this.prisma.authSession.update({
         where: { id: session.id },
         data: { revokedAt: new Date() },
