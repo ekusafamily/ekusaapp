@@ -4,6 +4,7 @@
  */
 
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { MapPin, Calendar, Users, Clock } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 
@@ -86,25 +87,25 @@ export function EventCard({ event, onPress, colorScheme }: EventCardProps) {
 
       <View style={styles.details}>
         <View style={styles.detailRow}>
-          <Text style={{ color: categoryColor }}>📍</Text>
+          <MapPin size={14} color={categoryColor} />
           <Text style={[styles.detailText, { color: colors.textSecondary }]}>{event.venue}</Text>
         </View>
         <View style={styles.detailRow}>
-          <Text style={{ color: categoryColor }}>📅</Text>
+          <Calendar size={14} color={categoryColor} />
           <Text style={[styles.detailText, { color: colors.textSecondary }]}>
             {formatDateRange(event.startAt, event.endAt)}
           </Text>
         </View>
         {event.capacity && (
           <View style={styles.detailRow}>
-            <Text style={{ color: categoryColor }}>👥</Text>
+            <Users size={14} color={categoryColor} />
             <Text style={[styles.detailText, { color: colors.textSecondary }]}>
               Limited spots available
             </Text>
           </View>
         )}
         <View style={styles.detailRow}>
-          <Text style={{ color: categoryColor }}>⏰</Text>
+          <Clock size={14} color={categoryColor} />
           <Text style={[styles.detailText, { color: isRegistrationOpen ? colors.warning : colors.error }]}>
             Register by {formatDate(event.registrationDeadline)}
           </Text>

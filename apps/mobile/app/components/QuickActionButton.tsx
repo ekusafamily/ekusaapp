@@ -4,6 +4,7 @@
  */
 
 import { View, Text, StyleSheet, TouchableOpacity, type StyleProp, type ViewStyle } from 'react-native';
+import { Megaphone, Calendar, Users, Tag, Mail, Settings, Bell, Search, Plus, Smartphone } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 
@@ -15,21 +16,23 @@ interface QuickActionButtonProps {
   style?: StyleProp<ViewStyle>;
 }
 
-const ICON_MAP: Record<string, string> = {
-  megaphone: '📢',
-  calendar: '📅',
-  users: '👥',
-  badge: '🏷️',
-  mail: '✉️',
-  settings: '⚙️',
-  notification: '🔔',
-  search: '🔍',
-  plus: '➕',
+type IconName = 'megaphone' | 'calendar' | 'users' | 'badge' | 'mail' | 'settings' | 'notification' | 'search' | 'plus';
+
+const ICON_MAP: Record<string, React.ComponentType<{ size: number; color: string }>> = {
+  megaphone: Megaphone,
+  calendar: Calendar,
+  users: Users,
+  badge: Tag,
+  mail: Mail,
+  settings: Settings,
+  notification: Bell,
+  search: Search,
+  plus: Plus,
 };
 
 export function QuickActionButton({ label, iconName, onPress, colorScheme, style }: QuickActionButtonProps) {
   const { colors } = { colors: Colors[colorScheme] };
-  const icon = ICON_MAP[iconName] || '📱';
+  const IconComponent = ICON_MAP[iconName] || Smartphone;
 
   return (
     <TouchableOpacity
@@ -42,7 +45,7 @@ export function QuickActionButton({ label, iconName, onPress, colorScheme, style
       activeOpacity={0.7}
     >
       <View style={styles.iconContainer}>
-        <Text style={{ fontSize: 24 }}>{icon}</Text>
+        <IconComponent size={24} color={colors.primary} />
       </View>
       <Text style={[styles.label, { color: colors.textPrimary }]}>{label}</Text>
     </TouchableOpacity>

@@ -4,7 +4,7 @@
  */
 
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Home, MessageCircle, Users, Calendar, User } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors } from '@/constants/Colors';
@@ -38,7 +38,7 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size - 4, color }}>🏠</Text>
+            <Home size={size - 4} color={color} />
           ),
         }}
       />
@@ -47,7 +47,7 @@ export default function TabLayout() {
         options={{
           title: 'Chats',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size - 4, color }}>💬</Text>
+            <MessageCircle size={size - 4} color={color} />
           ),
           tabBarBadge: user ? undefined : '!',
         }}
@@ -57,7 +57,7 @@ export default function TabLayout() {
         options={{
           title: 'Community',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size - 4, color }}>👥</Text>
+            <Users size={size - 4} color={color} />
           ),
         }}
       />
@@ -66,7 +66,7 @@ export default function TabLayout() {
         options={{
           title: 'Events',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size - 4, color }}>📅</Text>
+            <Calendar size={size - 4} color={color} />
           ),
         }}
       />
@@ -75,7 +75,7 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size - 4, color }}>👤</Text>
+            <User size={size - 4} color={color} />
           ),
         }}
       />

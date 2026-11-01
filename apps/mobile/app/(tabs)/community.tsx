@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { Landmark, School, Map, Users, Star, Calendar } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { communityApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
@@ -26,12 +27,12 @@ export default function CommunityScreen() {
   };
 
   const communityTypes = [
-    { key: 'general', label: 'General', icon: '🏛️' },
-    { key: 'campus', label: 'Campus', icon: '🏫' },
-    { key: 'constituency', label: 'Constituency', icon: '🗺️' },
-    { key: 'committee', label: 'Committees', icon: '👥' },
-    { key: 'interest', label: 'Interest Groups', icon: '⭐' },
-    { key: 'event', label: 'Event Groups', icon: '📅' },
+    { key: 'general', label: 'General', Icon: Landmark },
+    { key: 'campus', label: 'Campus', Icon: School },
+    { key: 'constituency', label: 'Constituency', Icon: Map },
+    { key: 'committee', label: 'Committees', Icon: Users },
+    { key: 'interest', label: 'Interest Groups', Icon: Star },
+    { key: 'event', label: 'Event Groups', Icon: Calendar },
   ];
 
   return (
@@ -42,7 +43,7 @@ export default function CommunityScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.typeCard} onPress={() => {}} activeOpacity={0.7}>
             <View style={styles.typeHeader}>
-              <Text style={styles.typeIcon}>{item.icon}</Text>
+              <item.Icon size={28} color={colors.primary} />
               <View style={styles.typeInfo}>
                 <Text style={[styles.typeTitle, { color: colors.textPrimary }]}>{item.label} Communities</Text>
                 <Text style={[styles.typeSubtitle, { color: colors.textSecondary }]}>

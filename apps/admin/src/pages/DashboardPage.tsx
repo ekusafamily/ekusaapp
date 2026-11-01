@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Users, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { apiClient } from '../lib/apiClient';
 
 interface DashboardStats {
@@ -45,25 +46,25 @@ export function DashboardPage() {
         <StatCard
           title="Total Users"
           value={stats?.totalUsers || 0}
-          icon="👥"
+          icon={<Users size={24} color="var(--color-primary)" />}
           color="var(--color-primary)"
         />
         <StatCard
           title="Verified Members"
           value={stats?.verifiedMembers || 0}
-          icon="✅"
+          icon={<CheckCircle size={24} color="var(--color-success)" />}
           color="var(--color-success)"
         />
         <StatCard
           title="Pending Memberships"
           value={stats?.pendingMemberships || 0}
-          icon="⏳"
+          icon={<Clock size={24} color="var(--color-warning)" />}
           color="var(--color-warning)"
         />
         <StatCard
           title="Open Welfare Requests"
           value={stats?.openWelfareRequests || 0}
-          icon="🆘"
+          icon={<AlertCircle size={24} color="var(--color-error)" />}
           color="var(--color-error)"
         />
       </div>
@@ -98,11 +99,11 @@ export function DashboardPage() {
   );
 }
 
-function StatCard({ title, value, icon, color }: { title: string; value: number; icon: string; color: string }) {
+function StatCard({ title, value, icon, color }: { title: string; value: number; icon: React.ReactNode; color: string }) {
   return (
     <div style={styles.statCard}>
       <div style={{ ...styles.statIcon, backgroundColor: `${color}20` }}>
-        <span style={{ color, fontSize: 'var(--font-size-xl)' }}>{icon}</span>
+        {icon}
       </div>
       <div style={styles.statContent}>
         <span style={styles.statValue}>{value.toLocaleString()}</span>

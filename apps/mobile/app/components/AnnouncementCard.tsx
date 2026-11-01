@@ -4,6 +4,7 @@
  */
 
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Pin } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 
@@ -73,7 +74,7 @@ export function AnnouncementCard({ announcement, onPress, colorScheme }: Announc
         </View>
         {announcement.pinned && (
           <View style={styles.pinIcon}>
-            <Text style={{ color: priorityColor }}>📌</Text>
+            <Pin size={14} color={priorityColor} />
           </View>
         )}
       </View>

@@ -143,9 +143,9 @@ function ConversationItem({ conversation, colorScheme }: { conversation: any; co
 function getMessagePreview(message: any): string {
   if (!message) return 'No messages yet';
   switch (message.messageType) {
-    case 'image': return '📷 Photo';
-    case 'file': return '📎 File';
-    case 'voice': return '🎤 Voice message';
+    case 'image': return 'Photo';
+    case 'file': return 'File';
+    case 'voice': return 'Voice message';
     case 'system': return message.content;
     case 'deletion': return 'This message was deleted';
     default: return message.content || 'Encrypted message';

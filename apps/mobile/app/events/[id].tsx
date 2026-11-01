@@ -4,6 +4,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import { MapPin, Calendar, Clock, Users, DollarSign, Pin } from 'lucide-react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
@@ -176,21 +177,22 @@ export default function EventDetailScreen({ route }: { route: { params: RoutePar
           </View>
           {event.pinned && (
             <View style={styles.pinBadge}>
-              <Text style={{ color: categoryColor }}>📌 Pinned</Text>
+              <Pin size={12} color={categoryColor} />
+              <Text style={{ color: categoryColor }}> Pinned</Text>
             </View>
           )}
         </View>
 
         {/* Meta Info */}
         <View style={styles.metaGrid}>
-          <MetaItem icon="📍" label="Venue" value={event.venue} colorScheme={colors} />
-          <MetaItem icon="📅" label="Date" value={formatDateRange(event.startAt, event.endAt)} colorScheme={colors} />
-          <MetaItem icon="⏰" label="Registration Deadline" value={formatDate(event.registrationDeadline)} colorScheme={colors} />
+          <MetaItem icon={<MapPin size={20} color={colors.textTertiary} />} label="Venue" value={event.venue} colorScheme={colors} />
+          <MetaItem icon={<Calendar size={20} color={colors.textTertiary} />} label="Date" value={formatDateRange(event.startAt, event.endAt)} colorScheme={colors} />
+          <MetaItem icon={<Clock size={20} color={colors.textTertiary} />} label="Registration Deadline" value={formatDate(event.registrationDeadline)} colorScheme={colors} />
           {event.capacity && (
-            <MetaItem icon="👥" label="Capacity" value={`${event.capacity} people`} colorScheme={colors} />
+            <MetaItem icon={<Users size={20} color={colors.textTertiary} />} label="Capacity" value={`${event.capacity} people`} colorScheme={colors} />
           )}
           {event.registrationFee > 0 && (
-            <MetaItem icon="💰" label="Fee" value={`KES ${formatCurrency(event.registrationFee)}`} colorScheme={colors} />
+            <MetaItem icon={<DollarSign size={20} color={colors.textTertiary} />} label="Fee" value={`KES ${formatCurrency(event.registrationFee)}`} colorScheme={colors} />
           )}
         </View>
 
@@ -311,10 +313,10 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-KE').format(amount);
 }
 
-function MetaItem({ icon, label, value, colorScheme }: { icon: string; label: string; value: string; colorScheme: ColorPalette }) {
+function MetaItem({ icon, label, value, colorScheme }: { icon: React.ReactNode; label: string; value: string; colorScheme: ColorPalette }) {
   return (
     <View style={styles.metaItem}>
-      <Text style={styles.metaIcon}>{icon}</Text>
+      <View style={styles.metaIcon}>{icon}</View>
       <View style={styles.metaTextContainer}>
         <Text style={[styles.metaLabel, { color: colorScheme.textTertiary }]}>{label}</Text>
         <Text style={[styles.metaValue, { color: colorScheme.textPrimary }]}>{value}</Text>

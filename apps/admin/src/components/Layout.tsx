@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { LayoutDashboard, Users, Tag, Megaphone, Calendar, HeartHandshake, Globe, GraduationCap, ShieldCheck, ClipboardList, Settings, LogOut } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { path: '/dashboard', label: 'Dashboard', icon: '📊' },
-  { path: '/members', label: 'Members', icon: '👥' },
-  { path: '/membership', label: 'Membership', icon: '🏷️' },
-  { path: '/announcements', label: 'Announcements', icon: '📢' },
-  { path: '/events', label: 'Events', icon: '📅' },
-  { path: '/welfare', label: 'Welfare', icon: '🆘' },
-  { path: '/communities', label: 'Communities', icon: '👥' },
-  { path: '/leadership', label: 'Leadership', icon: '🎓' },
-  { path: '/roles', label: 'Roles & Permissions', icon: '🔐' },
-  { path: '/audit', label: 'Audit Logs', icon: '📋' },
-  { path: '/settings', label: 'Settings', icon: '⚙️' },
+  { path: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+  { path: '/members', label: 'Members', Icon: Users },
+  { path: '/membership', label: 'Membership', Icon: Tag },
+  { path: '/announcements', label: 'Announcements', Icon: Megaphone },
+  { path: '/events', label: 'Events', Icon: Calendar },
+  { path: '/welfare', label: 'Welfare', Icon: HeartHandshake },
+  { path: '/communities', label: 'Communities', Icon: Globe },
+  { path: '/leadership', label: 'Leadership', Icon: GraduationCap },
+  { path: '/roles', label: 'Roles & Permissions', Icon: ShieldCheck },
+  { path: '/audit', label: 'Audit Logs', Icon: ClipboardList },
+  { path: '/settings', label: 'Settings', Icon: Settings },
 ];
 
 export function Layout() {
@@ -62,7 +63,7 @@ export function Layout() {
               })}
               end={item.path === '/dashboard'}
             >
-              <span style={styles.navIcon}>{item.icon}</span>
+              <span style={styles.navIcon}><item.Icon size={18} /></span>
               {sidebarOpen && <span style={styles.navLabel}>{item.label}</span>}
             </NavLink>
           ))}
@@ -71,7 +72,7 @@ export function Layout() {
         <div style={styles.sidebarFooter}>
           {sidebarOpen && (
             <button style={styles.logoutButton} onClick={handleLogout}>
-              <span style={styles.logoutIcon}>🚪</span>
+              <span style={styles.logoutIcon}><LogOut size={18} /></span>
               <span style={styles.logoutLabel}>Logout</span>
             </button>
           )}

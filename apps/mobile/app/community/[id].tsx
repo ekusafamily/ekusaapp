@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { Avatar } from '@/components/Avatar';
+import { MessageCircle, Heart } from 'lucide-react-native';
 import { router } from 'expo-router';
 import type { Community } from '@ekusa/shared-types';
 
@@ -245,10 +246,12 @@ function PostItem({ post, colorScheme }: { post: any; colorScheme: 'light' | 'da
       <Text style={[styles.postContent, { color: colors.textPrimary }]}>{post.content}</Text>
       <View style={styles.postActions}>
         <TouchableOpacity style={styles.actionButton}>
-          <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}>💬 {post.comments}</Text>
+          <MessageCircle size={16} color={colors.textSecondary} />
+          <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}> {post.comments}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton}>
-          <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}>❤️ {post.likes}</Text>
+          <Heart size={16} color={colors.textSecondary} />
+          <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}> {post.likes}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton}>
           <Text style={[styles.actionButtonText, { color: colors.textSecondary }]}>Share</Text>
