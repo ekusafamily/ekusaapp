@@ -3,7 +3,7 @@
  * Primary screen showing announcements, events, quick actions, and association updates
  */
 
-import { View, Text, ScrollView, RefreshControl, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, StyleSheet } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { announcementsApi, eventsApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
@@ -14,6 +14,7 @@ import { EventCard } from '@/components/EventCard';
 import { QuickActionButton } from '@/components/QuickActionButton';
 import { Avatar } from '@/components/Avatar';
 import { MembershipBadge } from '@/components/MembershipBadge';
+import { router } from 'expo-router';
 
 export default function HomeScreen() {
   const { user } = useAuthStore();
@@ -37,11 +38,15 @@ export default function HomeScreen() {
 
   const quickActions = [
     { label: 'Announcements', icon: 'megaphone', route: '/announcements' },
-    { label: 'Events', icon: 'calendar', route: '/events' },
-    { label: 'Community', icon: 'users', route: '/community' },
-    { label: user?.accountStatus !== 'verified_member' ? 'Apply Membership' : 'My Membership', icon: 'badge', route: '/membership' },
-    { label: 'Contact Leadership', icon: 'mail', route: '/contact-leadership' },
+    { label: 'Events', icon: 'calendar', route: '/(tabs)/events' },
+    { label: 'Community', icon: 'users', route: '/(tabs)/community' },
+    { label: user?.accountStatus !== 'verified_member' ? 'Apply Membership' : 'My Membership', icon: 'badge', route: '/(auth)/membership-apply' },
+    { label: 'Welfare Support', icon: 'mail', route: '/welfare' },
   ];
+
+  const handleQuickAction = (route: string) => {
+    router.push(route as any);
+  };
 
   return (
     <ScrollView
@@ -52,7 +57,11 @@ export default function HomeScreen() {
       contentContainerStyle={styles.contentContainer}
     >
       {/* Welcome Section */}
-      <View style={[styles.welcomeSection, { backgroundColor: colors.surface }]}>
+      <TouchableOpacity
+        style={[styles.welcomeSection, { backgroundColor: colors.surface }]}
+        onPress={() => router.push('/(tabs)/profile')}
+        activeOpacity={0.9}
+      >
         <View style={styles.welcomeContent}>
           <View style={styles.welcomeTextContainer}>
             <Text style={[styles.welcomeGreeting, { color: colors.textPrimary }]}>
@@ -71,13 +80,13 @@ export default function HomeScreen() {
             size="large"
           />
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Important Announcements */}
       <View style={styles.sectionContainer}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Important Announcements</Text>
-          <TouchableOpacity style={styles.seeAllButton}>
+          <TouchableOpacity style={styles.seeAllButton} onPress={() => router.push('/announcements')}>
             <Text style={[styles.seeAllText, { color: colors.primary }]}>See all</Text>
           </TouchableOpacity>
         </View>
@@ -96,7 +105,7 @@ export default function HomeScreen() {
               <AnnouncementCard
                 key={announcement.id}
                 announcement={announcement}
-                onPress={() => {}}
+                onPress={() => router.push('/announcements')}
                 colorScheme={colorScheme}
               />
             ))}
@@ -108,7 +117,7 @@ export default function HomeScreen() {
       <View style={styles.sectionContainer}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Upcoming Events</Text>
-          <TouchableOpacity style={styles.seeAllButton}>
+          <TouchableOpacity style={styles.seeAllButton} onPress={() => router.push('/(tabs)/events')}>
             <Text style={[styles.seeAllText, { color: colors.primary }]}>See all</Text>
           </TouchableOpacity>
         </View>
@@ -127,7 +136,7 @@ export default function HomeScreen() {
               <EventCard
                 key={event.id}
                 event={event}
-                onPress={() => {}}
+                onPress={() => router.push({ pathname: '/events/[id]', params: { id: event.id } })}
                 colorScheme={colorScheme}
               />
             ))}
@@ -144,7 +153,7 @@ export default function HomeScreen() {
               key={action.label}
               label={action.label}
               iconName={action.icon}
-              onPress={() => {}}
+              onPress={() => handleQuickAction(action.route)}
               colorScheme={colorScheme}
             />
           ))}

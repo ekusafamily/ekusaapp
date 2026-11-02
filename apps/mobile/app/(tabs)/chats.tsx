@@ -11,6 +11,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { Avatar } from '@/components/Avatar';
+import { router } from 'expo-router';
 
 export default function ChatsScreen() {
   const { user } = useAuthStore();
@@ -40,16 +41,18 @@ export default function ChatsScreen() {
     );
   }, [conversations, searchQuery]);
 
-  const startNewChat = () => {
-    // Navigate to user search screen
-  };
-
   if (!user) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.authPrompt}>
           <Text style={[styles.authPromptTitle, { color: colors.textPrimary }]}>Sign in to access messages</Text>
           <Text style={[styles.authPromptText, { color: colors.textSecondary }]}>You need to be logged in to view and send messages.</Text>
+          <TouchableOpacity
+            style={[styles.authButton, { backgroundColor: colors.primary }]}
+            onPress={() => router.push('/(auth)/login')}
+          >
+            <Text style={[styles.authButtonText, { color: colors.onPrimary }]}>Sign In</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -68,7 +71,6 @@ export default function ChatsScreen() {
           placeholderTextColor={colors.textTertiary}
           value={searchQuery}
           onChangeText={setSearchQuery}
-          onFocus={startNewChat}
         />
       </View>
 
@@ -81,7 +83,7 @@ export default function ChatsScreen() {
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No conversations yet</Text>
             <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-              Tap the search bar to start a new conversation
+              Search for users to start a new private conversation
             </Text>
           </View>
         }
@@ -100,8 +102,12 @@ function ConversationItem({ conversation, colorScheme }: { conversation: any; co
   const lastMessage = conversation.lastMessage;
   const unreadCount = conversation.unreadCount || 0;
 
+  const handlePress = () => {
+    router.push({ pathname: '/(tabs)/chats/[id]', params: { id: conversation.id } });
+  };
+
   return (
-    <TouchableOpacity style={[styles.conversationItem, { backgroundColor: colors.surface }]} onPress={() => {}} activeOpacity={0.7}>
+    <TouchableOpacity style={[styles.conversationItem, { backgroundColor: colors.surface }]} onPress={handlePress} activeOpacity={0.7}>
       <Avatar
         source={otherUser?.avatarUrl ? { uri: otherUser.avatarUrl } : undefined}
         name={otherUser?.displayName || otherUser?.username}
@@ -266,5 +272,15 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.md,
     textAlign: 'center',
     lineHeight: 22,
+    marginBottom: Spacing.lg,
+  },
+  authButton: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.md,
+  },
+  authButtonText: {
+    fontSize: Typography.sizes.md,
+    fontWeight: Typography.weights.semibold,
   },
 });

@@ -12,6 +12,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { Avatar } from '@/components/Avatar';
 import { MembershipBadge } from '@/components/MembershipBadge';
+import { router } from 'expo-router';
 import type { MembershipApplication, User as UserType } from '@ekusa/shared-types';
 
 export default function ProfileScreen() {
@@ -142,7 +143,7 @@ export default function ProfileScreen() {
             </View>
           )}
           {displayUser?.accountStatus !== 'verified_member' && (
-            <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(auth)/membership-apply')}>
               <Text style={[styles.actionButtonText, { color: colors.onPrimary }]}>Apply for Membership</Text>
             </TouchableOpacity>
           )}

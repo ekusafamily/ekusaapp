@@ -11,6 +11,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { EventCard } from '@/components/EventCard';
+import { router } from 'expo-router';
 
 export default function EventsScreen() {
   const { user } = useAuthStore();
@@ -25,13 +26,17 @@ export default function EventsScreen() {
 
   const { data: myRegistrations } = useQuery({
     queryKey: ['my-event-registrations'],
-    queryFn: () => eventsApi.list({ status: 'published' }), // Would be a different endpoint in real app
+    queryFn: () => eventsApi.list({ status: 'published' }),
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
 
   const handleRefresh = async () => {
     await refetch();
+  };
+
+  const handleEventPress = (eventId: string) => {
+    router.push({ pathname: '/events/[id]', params: { id: eventId } });
   };
 
   const categories = [
@@ -94,7 +99,9 @@ export default function EventsScreen() {
           <FlatList
             data={myRegistrations?.items?.slice(0, 3) || []}
             keyExtractor={(item: any) => item.id}
-            renderItem={({ item }: { item: any }) => <EventCard event={item} onPress={() => {}} colorScheme={colorScheme} />}
+            renderItem={({ item }: { item: any }) => (
+              <EventCard event={item} onPress={() => handleEventPress(item.id)} colorScheme={colorScheme} />
+            )}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalListContent}
@@ -124,19 +131,29 @@ export default function EventsScreen() {
           <FlatList
             data={upcomingEvents}
             keyExtractor={(item: any) => item.id}
-            renderItem={({ item }: { item: any }) => <EventCard event={item} onPress={() => {}} colorScheme={colorScheme} />}
+            renderItem={({ item }: { item: any }) => (
+              <EventCard event={item} onPress={() => handleEventPress(item.id)} colorScheme={colorScheme} />
+            )}
             contentContainerStyle={styles.listContent}
           />
         )}
       </View>
 
-      {/* Past Events (collapsed by default) */}
+      {/* Past Events */}
       {pastEvents.length > 0 && (
         <View style={styles.sectionContainer}>
-          <TouchableOpacity style={styles.sectionHeader} onPress={() => {}} activeOpacity={0.8}>
+          <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Past Events</Text>
             <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>{pastEvents.length} events</Text>
-          </TouchableOpacity>
+          </View>
+          <FlatList
+            data={pastEvents}
+            keyExtractor={(item: any) => item.id}
+            renderItem={({ item }: { item: any }) => (
+              <EventCard event={item} onPress={() => handleEventPress(item.id)} colorScheme={colorScheme} />
+            )}
+            contentContainerStyle={styles.listContent}
+          />
         </View>
       )}
     </View>
@@ -165,7 +182,7 @@ const styles = StyleSheet.create({
   },
   categoryChipText: {
     fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.medium,
+    fontWeight: Typography.weights.semibold,
   },
   sectionContainer: {
     paddingHorizontal: Spacing.md,

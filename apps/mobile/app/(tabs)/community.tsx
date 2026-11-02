@@ -5,12 +5,12 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
-import { Landmark, School, Map, Users, Star, Calendar } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { communityApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
+import { router } from 'expo-router';
 
 export default function CommunityScreen() {
   const { user } = useAuthStore();
@@ -27,12 +27,12 @@ export default function CommunityScreen() {
   };
 
   const communityTypes = [
-    { key: 'general', label: 'General', Icon: Landmark },
-    { key: 'campus', label: 'Campus', Icon: School },
-    { key: 'constituency', label: 'Constituency', Icon: Map },
-    { key: 'committee', label: 'Committees', Icon: Users },
-    { key: 'interest', label: 'Interest Groups', Icon: Star },
-    { key: 'event', label: 'Event Groups', Icon: Calendar },
+    { key: 'general', label: 'General', icon: '🏛️' },
+    { key: 'campus', label: 'Campus', icon: '🏫' },
+    { key: 'constituency', label: 'Constituency', icon: '🗺️' },
+    { key: 'committee', label: 'Committees', icon: '👥' },
+    { key: 'interest', label: 'Interest Groups', icon: '⭐' },
+    { key: 'event', label: 'Event Groups', icon: '📅' },
   ];
 
   return (
@@ -41,9 +41,9 @@ export default function CommunityScreen() {
         data={communityTypes}
         keyExtractor={(item) => item.key}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.typeCard} onPress={() => {}} activeOpacity={0.7}>
+          <View style={[styles.typeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.typeHeader}>
-              <item.Icon size={28} color={colors.primary} />
+              <Text style={{ fontSize: 28 }}>{item.icon}</Text>
               <View style={styles.typeInfo}>
                 <Text style={[styles.typeTitle, { color: colors.textPrimary }]}>{item.label} Communities</Text>
                 <Text style={[styles.typeSubtitle, { color: colors.textSecondary }]}>
@@ -53,18 +53,31 @@ export default function CommunityScreen() {
             </View>
             <View style={styles.typePreview}>
               {getSampleCommunities(communities, item.key).map((comm: any) => (
-                <View key={comm.id} style={styles.previewItem}>
+                <TouchableOpacity
+                  key={comm.id}
+                  style={[styles.previewItem, { borderBottomColor: colors.divider }]}
+                  onPress={() => router.push({ pathname: '/community/[id]', params: { id: comm.id } })}
+                  activeOpacity={0.7}
+                >
                   <Text style={[styles.previewName, { color: colors.textPrimary }]}>{comm.name}</Text>
                   <Text style={[styles.previewMembers, { color: colors.textTertiary }]}>
                     {comm.memberCount} members
                   </Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity style={styles.viewAllButton} onPress={() => {}}>
-              <Text style={[styles.viewAllText, { color: colors.primary }]}>View all {item.label.toLowerCase()} communities →</Text>
+            <TouchableOpacity
+              style={[styles.viewAllButton, { borderTopColor: colors.divider }]}
+              onPress={() => {
+                const sample = getSampleCommunities(communities, item.key)[0];
+                if (sample) {
+                  router.push({ pathname: '/community/[id]', params: { id: sample.id } });
+                }
+              }}
+            >
+              <Text style={[styles.viewAllText, { color: colors.primary }]}>Explore {item.label.toLowerCase()} communities →</Text>
             </TouchableOpacity>
-          </TouchableOpacity>
+          </View>
         )}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -100,11 +113,9 @@ const styles = StyleSheet.create({
     gap: Spacing.lg,
   },
   typeCard: {
-    backgroundColor: Colors.light.surface,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.light.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -116,9 +127,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
     marginBottom: Spacing.md,
-  },
-  typeIcon: {
-    fontSize: 28,
   },
   typeInfo: {
     flex: 1,
@@ -139,9 +147,8 @@ const styles = StyleSheet.create({
   previewItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: Spacing.xs,
+    paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.light.divider,
   },
   previewName: {
     fontSize: Typography.sizes.sm,
@@ -153,7 +160,6 @@ const styles = StyleSheet.create({
   viewAllButton: {
     paddingTop: Spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: Colors.light.divider,
   },
   viewAllText: {
     fontSize: Typography.sizes.sm,
