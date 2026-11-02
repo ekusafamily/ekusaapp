@@ -26,7 +26,7 @@ import { RolesModule } from './roles/roles.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env.local', '.env'],
+      envFilePath: ['.env.local', '.env', '../../.env', '../.env'],
     }),
     PrismaModule,
     StorageModule,
