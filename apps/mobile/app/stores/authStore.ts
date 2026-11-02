@@ -73,6 +73,8 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         try {
           await authApi.register(data);
+          // Auto-login to obtain JWT tokens
+          await authApi.login({ identifier: data.username, password: data.password });
           const response = await authApi.getCurrentUser();
           set({ user: response as User, isLoading: false, error: null });
         } catch (error: any) {
