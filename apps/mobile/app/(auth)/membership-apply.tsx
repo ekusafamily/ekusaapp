@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, Modal } from 'react-native';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
@@ -31,7 +31,7 @@ export default function MembershipApplyScreen() {
     registrationNumber: '',
     campus: '',
     course: '',
-    yearOfStudy: '',
+    yearOfStudy: '1',
     contactInfo: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -39,10 +39,11 @@ export default function MembershipApplyScreen() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const validateField = (name: string, value: string) => {
+  const validateField = (name: string, value: any) => {
+    const val = name === 'yearOfStudy' ? parseInt(value, 10) || 1 : value;
     const fieldSchema = submitMembershipRequestSchema.shape[name as keyof typeof submitMembershipRequestSchema.shape];
     if (fieldSchema) {
-      const result = fieldSchema.safeParse(value);
+      const result = fieldSchema.safeParse(val);
       if (!result.success) {
         return result.error.errors[0].message;
       }
@@ -75,6 +76,10 @@ export default function MembershipApplyScreen() {
   };
 
   const handleSubmit = async () => {
+    if (!user) {
+      setError('You must be logged in to apply for membership.');
+      return;
+    }
     setError('');
     if (!validateForm()) return;
 
@@ -89,11 +94,45 @@ export default function MembershipApplyScreen() {
       });
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || 'Application failed. Please try again.');
+      if (err?.status === 401 || err?.message?.includes('401')) {
+        setError('Session expired or unauthorized. Please log in again.');
+      } else {
+        setError(err?.message || 'Application failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (!user) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.authPromptContainer}>
+          <View style={[styles.logo, { backgroundColor: colors.primary }]}>
+            <Text style={styles.logoText}>E</Text>
+          </View>
+          <Text style={[styles.authPromptTitle, { color: colors.textPrimary }]}>Sign In Required</Text>
+          <Text style={[styles.authPromptText, { color: colors.textSecondary }]}>
+            You must have an EKUSA account to apply for membership verification.
+          </Text>
+          <View style={styles.authActionRow}>
+            <TouchableOpacity
+              style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+              onPress={() => router.push('/(auth)/login')}
+            >
+              <Text style={[styles.buttonText, { color: colors.onPrimary }]}>Sign In</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.outlinedButton, { borderColor: colors.primary }]}
+              onPress={() => router.push('/(auth)/register')}
+            >
+              <Text style={[styles.buttonText, { color: colors.primary }]}>Register Account</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   if (success) {
     return (
@@ -575,5 +614,44 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     paddingHorizontal: Spacing.md,
+  },
+  authPromptContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  authPromptTitle: {
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+    marginBottom: Spacing.sm,
+  },
+  authPromptText: {
+    fontSize: Typography.sizes.md,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.xl,
+  },
+  authActionRow: {
+    width: '100%',
+    maxWidth: 320,
+    gap: Spacing.md,
+  },
+  primaryButton: {
+    height: 50,
+    borderRadius: BorderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  outlinedButton: {
+    height: 50,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonText: {
+    fontSize: Typography.sizes.md,
+    fontWeight: Typography.weights.semibold,
   },
 });

@@ -98,7 +98,7 @@ export const submitMembershipRequestSchema = z.object({
   registrationNumber: z.string().min(1).max(50),
   campus: z.string().min(1).max(100),
   course: z.string().min(1).max(100),
-  yearOfStudy: z.number().int().min(1).max(10),
+  yearOfStudy: z.coerce.number().int().min(1).max(10),
   contactInfo: z.string().max(500).optional(),
 }).strict();
 
