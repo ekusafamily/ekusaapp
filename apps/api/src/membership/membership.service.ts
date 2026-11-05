@@ -125,19 +125,66 @@ export class MembershipService {
     sortBy?: string;
     sortOrder?: string;
   }) {
-    const { status, campus, sortBy = 'submittedAt', sortOrder = 'desc' } = params;
+    const { status = 'all', campus, sortBy = 'submittedAt', sortOrder = 'desc' } = params;
     const page = Math.max(1, Number(params.page) || 1);
     const limit = Math.max(1, Number(params.limit) || 20);
 
+    // If status is 'all' or 'registered', query all users from User table to include non-applicants
+    if (status === 'all' || status === 'registered') {
+      const userWhere: any = {};
+      if (campus) {
+        userWhere.OR = [
+          { membership: { campus } },
+          { profile: { campus } },
+        ];
+      }
+
+      const [users, total] = await Promise.all([
+        this.prisma.user.findMany({
+          where: userWhere,
+          include: {
+            profile: true,
+            membership: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+          skip: (page - 1) * limit,
+        }),
+        this.prisma.user.count({ where: userWhere }),
+      ]);
+
+      const items = users.map((u: any) => ({
+        id: u.membership?.id || u.id,
+        userId: u.id,
+        registrationNumber: u.membership?.registrationNumber || 'N/A',
+        campus: u.membership?.campus || u.profile?.campus || 'N/A',
+        course: u.membership?.course || u.profile?.course || 'N/A',
+        yearOfStudy: u.membership?.yearOfStudy || u.profile?.yearOfStudy || null,
+        membershipStatus: u.membership?.membershipStatus || 'none',
+        submittedAt: u.membership?.submittedAt || u.createdAt,
+        user: {
+          id: u.id,
+          username: u.username,
+          email: u.email,
+          accountStatus: u.accountStatus,
+          createdAt: u.createdAt,
+          profile: u.profile,
+        },
+      }));
+
+      return { items, page, limit, total, totalPages: Math.ceil(total / limit) };
+    }
+
+    // Filter by specific membership status from Membership table
     const where: any = {};
-    if (status && status !== 'all') {
+    if (status) {
       where.membershipStatus = status;
     }
     if (campus) {
       where.campus = campus;
     }
 
-    const [items, total] = await Promise.all([
+    const [memberships, total] = await Promise.all([
       this.prisma.membership.findMany({
         where,
         include: {
@@ -148,6 +195,7 @@ export class MembershipService {
               email: true,
               accountStatus: true,
               createdAt: true,
+              profile: true,
             },
           },
           reviewer: {
@@ -158,7 +206,7 @@ export class MembershipService {
             },
           },
         },
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: { [sortBy === 'submittedAt' ? 'submittedAt' : 'submittedAt']: sortOrder as 'asc' | 'desc' },
         take: limit,
         skip: (page - 1) * limit,
       }),
@@ -166,7 +214,7 @@ export class MembershipService {
     ]);
 
     return {
-      items,
+      items: memberships,
       page,
       limit,
       total,
