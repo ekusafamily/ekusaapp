@@ -62,6 +62,7 @@ function clearTokens(): void {
   accessToken = null;
   refreshToken = null;
   setStoredTokens(null, null);
+  delete apiClient?.defaults?.headers?.common?.['Authorization'];
 }
 
 // Initialize from storage
@@ -196,8 +197,8 @@ export class ApiError extends Error {
 // Helper Functions
 // ============================================
 
-function handleResponse<T>(response: { data: ApiResponse<T> }): T {
-  if (!response.data.success) {
+function handleResponse<T>(response: { data: any }): T {
+  if (response.data && response.data.success === false) {
     throw new ApiError(
       response.data.error?.code || 'API_ERROR',
       response.data.error?.message || 'Request failed',
@@ -205,13 +206,13 @@ function handleResponse<T>(response: { data: ApiResponse<T> }): T {
       response.data.error?.details
     );
   }
-  if (response.data.data === undefined) {
-    throw new ApiError('NO_DATA', 'Response contains no data', 0);
+  if (response.data && response.data.data !== undefined) {
+    return response.data.data as T;
   }
-  return response.data.data;
+  return response.data as T;
 }
 
-function handlePaginatedResponse<T>(response: { data: ApiResponse<PaginatedResponse<T>> }): PaginatedResponse<T> {
+function handlePaginatedResponse<T>(response: { data: any }): PaginatedResponse<T> {
   return handleResponse(response);
 }
 
@@ -221,31 +222,42 @@ function handlePaginatedResponse<T>(response: { data: ApiResponse<PaginatedRespo
 
 export const authApi = {
   register: async (data: { username: string; email?: string; phoneNumber?: string; password: string }) => {
-    const response = await apiClient.post<ApiResponse<{ user: unknown; tokens: { accessToken: string; refreshToken: string; expiresIn: number } }>>('/auth/register', data);
-    const result = handleResponse(response);
-    accessToken = result.tokens.accessToken;
-    refreshToken = result.tokens.refreshToken;
-    setStoredTokens(accessToken, refreshToken);
+    const response = await apiClient.post('/auth/register', data);
+    const result: any = handleResponse(response);
+    const tokens = result.tokens || result.data?.tokens;
+    if (tokens) {
+      accessToken = tokens.accessToken;
+      refreshToken = tokens.refreshToken;
+      setStoredTokens(accessToken, refreshToken);
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+    }
     return result;
   },
 
   login: async (data: { identifier: string; password: string }) => {
-    const response = await apiClient.post<ApiResponse<{ user: unknown; tokens: { accessToken: string; refreshToken: string; expiresIn: number } }>>('/auth/login', data);
-    const result = handleResponse(response);
-    accessToken = result.tokens.accessToken;
-    refreshToken = result.tokens.refreshToken;
-    setStoredTokens(accessToken, refreshToken);
+    const response = await apiClient.post('/auth/login', data);
+    const result: any = handleResponse(response);
+    const tokens = result.tokens || result.data?.tokens;
+    if (tokens) {
+      accessToken = tokens.accessToken;
+      refreshToken = tokens.refreshToken;
+      setStoredTokens(accessToken, refreshToken);
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+    }
     return result;
   },
 
   logout: async () => {
-    await apiClient.post('/auth/logout');
-    clearTokens();
+    try {
+      await apiClient.post('/auth/logout', { refreshToken });
+    } finally {
+      clearTokens();
+    }
   },
 
   refresh: async () => {
     const response = await apiClient.post<ApiResponse<{ accessToken: string; refreshToken: string; expiresIn: number }>>('/auth/refresh', { refreshToken });
-    const result = handleResponse(response);
+    const result: any = handleResponse(response);
     accessToken = result.accessToken;
     refreshToken = result.refreshToken;
     setStoredTokens(accessToken, refreshToken);
