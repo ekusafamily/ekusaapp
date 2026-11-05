@@ -6,7 +6,7 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "nest start",
-    "start:prod": "node dist/apps/api/src/main",
+    "start:prod": "node dist/main",
     "lint": "eslint . --ext .ts",
     "typecheck": "tsc --noEmit",
     "test": "jest --passWithNoTests",
