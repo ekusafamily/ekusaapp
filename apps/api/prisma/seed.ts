@@ -200,6 +200,67 @@ async function main() {
     console.log('Super Admin role assigned successfully.');
   }
 
+  // 4. Seed Published Announcements
+  console.log('Seeding published announcements...');
+  const SAMPLE_ANNOUNCEMENTS = [
+    {
+      title: 'Annual General Meeting (AGM) Notice',
+      body: 'Notice is hereby given that the Annual General Meeting of EKUSA will be held at the Main Auditorium on March 15th. All verified members are invited.',
+      category: 'general',
+      priority: 'urgent',
+      pinned: true,
+      status: 'published',
+    },
+    {
+      title: 'Emergency Welfare Support Disbursement',
+      body: 'The Welfare Committee has approved KES 500,000 for emergency student financial support. Eligible students can apply via the Welfare tab.',
+      category: 'welfare',
+      priority: 'important',
+      pinned: true,
+      status: 'published',
+    },
+    {
+      title: 'EKUSA Inter-Campus Sports Tournament',
+      body: 'Registration is open for the upcoming Inter-Campus Sports Tournament. Form your teams and register under the Events section.',
+      category: 'event',
+      priority: 'normal',
+      pinned: false,
+      status: 'published',
+    },
+    {
+      title: 'Student Leadership Dialogue Series',
+      body: 'Join the EKUSA Executive Council this Friday for an interactive townhall session addressing student affairs and campus welfare.',
+      category: 'leadership',
+      priority: 'important',
+      pinned: false,
+      status: 'published',
+    },
+  ];
+
+  for (const item of SAMPLE_ANNOUNCEMENTS) {
+    const existing = await prisma.announcement.findFirst({
+      where: { title: item.title },
+    });
+
+    if (!existing) {
+      await prisma.announcement.create({
+        data: {
+          title: item.title,
+          body: item.body,
+          category: item.category as any,
+          priority: item.priority as any,
+          status: 'published',
+          pinned: item.pinned,
+          publishedAt: new Date(),
+          publisherId: adminUser.id,
+          targets: {
+            create: [{ targetType: 'everyone', targetValue: 'all' }],
+          },
+        },
+      });
+    }
+  }
+
   console.log('EKUSA database seeding completed successfully!');
 }
 

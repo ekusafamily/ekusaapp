@@ -28,8 +28,6 @@ export class AnnouncementsController {
   constructor(private readonly announcementsService: AnnouncementsService) {}
 
   @Get()
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'List accessible announcements' })
   async list(@Request() req: any, @Query() params: {
     category?: string;
@@ -40,7 +38,8 @@ export class AnnouncementsController {
     sortBy?: string;
     sortOrder?: string;
   }) {
-    return this.announcementsService.list({ ...params, userId: req.user.sub });
+    const userId = req.user?.sub;
+    return this.announcementsService.list({ ...params, userId });
   }
 
   @Get(':id')

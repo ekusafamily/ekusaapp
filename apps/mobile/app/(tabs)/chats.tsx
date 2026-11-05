@@ -32,9 +32,10 @@ export default function ChatsScreen() {
 
   // Filter conversations by search query
   const filteredConversations = useMemo(() => {
-    if (!searchQuery.trim()) return conversations || [];
+    const list: any[] = Array.isArray(conversations) ? conversations : ((conversations as any)?.items || []);
+    if (!searchQuery.trim()) return list;
     const query = searchQuery.toLowerCase();
-    return (conversations || []).filter((conv: any) =>
+    return list.filter((conv: any) =>
       conv.otherUser?.displayName?.toLowerCase().includes(query) ||
       conv.otherUser?.username?.toLowerCase().includes(query) ||
       conv.lastMessage?.content?.toLowerCase().includes(query)

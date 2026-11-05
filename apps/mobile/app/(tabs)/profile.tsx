@@ -3,8 +3,8 @@
  * Account and membership management
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, RefreshControl, ActivityIndicator } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi, authApi, membershipApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
@@ -20,14 +20,14 @@ export default function ProfileScreen() {
   const { colors, colorScheme } = useTheme();
   const queryClient = useQueryClient();
 
-  const { data: profile, refetch: refetchProfile } = useQuery<UserType>({
+  const { data: profile, refetch: refetchProfile, isLoading: profileLoading } = useQuery<UserType>({
     queryKey: ['user-profile'],
     queryFn: () => authApi.getCurrentUser() as Promise<UserType>,
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: membership } = useQuery<MembershipApplication>({
+  const { data: membership, refetch: refetchMembership, isLoading: membershipLoading } = useQuery<MembershipApplication>({
     queryKey: ['membership-status'],
     queryFn: () => membershipApi.getMyStatus() as Promise<MembershipApplication>,
     enabled: !!user,
@@ -40,16 +40,34 @@ export default function ProfileScreen() {
       logout();
       queryClient.clear();
     },
-    onError: (error: any) => {
-      Alert.alert('Error', error.message || 'Failed to log out');
+    onError: () => {
+      // Clear client state even if backend request fails
+      logout();
+      queryClient.clear();
     },
   });
+
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] }),
+      queryClient.invalidateQueries({ queryKey: ['membership-status'] }),
+    ]);
+  }, [queryClient]);
 
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Log Out', style: 'destructive', onPress: () => logoutMutation.mutate() },
     ]);
+  };
+
+  const handleRefreshMembership = async () => {
+    try {
+      await refetchMembership();
+      await queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+    } catch (error: any) {
+      Alert.alert('Refresh Failed', error.message || 'Failed to refresh membership status');
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -80,6 +98,13 @@ export default function ProfileScreen() {
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.contentContainer}
+      refreshControl={
+        <RefreshControl
+          refreshing={profileLoading || membershipLoading}
+          onRefresh={handleRefresh}
+          tintColor={colors.primary}
+        />
+      }
     >
       {/* Profile Header */}
       <View style={[styles.profileHeader, { backgroundColor: colors.surface }]}>
@@ -104,7 +129,20 @@ export default function ProfileScreen() {
       {/* Membership Status Card */}
       <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Membership Status</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Membership Status</Text>
+            <TouchableOpacity
+              style={styles.refreshIcon}
+              onPress={handleRefreshMembership}
+              disabled={membershipLoading}
+            >
+              {membershipLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={[styles.refreshIconText, { color: colors.primary }]}>↻</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.membershipCard}>
           <View style={styles.membershipMain}>
@@ -296,9 +334,25 @@ const styles = StyleSheet.create({
   sectionHeader: {
     marginBottom: Spacing.md,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   sectionTitle: {
     fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.semibold,
+  },
+  refreshIcon: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: BorderRadius.full,
+  },
+  refreshIconText: {
+    fontSize: Typography.sizes.lg,
+    fontWeight: Typography.weights.bold,
   },
   membershipCard: {
     gap: Spacing.md,

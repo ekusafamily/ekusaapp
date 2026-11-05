@@ -10,6 +10,7 @@ import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTok
 import { membershipApi } from '@ekusa/api-client';
 import { router } from 'expo-router';
 import { submitMembershipRequestSchema } from '@ekusa/validation';
+import { useQueryClient } from '@tanstack/react-query';
 
 const CAMPUSES = ['Embu Main Campus', 'Kirinyaga Campus', 'Nairobi Campus', 'Other'];
 const COURSES = [
@@ -27,6 +28,7 @@ const COURSES = [
 export default function MembershipApplyScreen() {
   const { colors } = useTheme();
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     registrationNumber: '',
     campus: '',
@@ -93,6 +95,9 @@ export default function MembershipApplyScreen() {
         contactInfo: formData.contactInfo || undefined,
       });
       setSuccess(true);
+      // Invalidate membership queries to refresh status
+      await queryClient.invalidateQueries({ queryKey: ['membership-status'] });
+      await queryClient.invalidateQueries({ queryKey: ['user-profile'] });
     } catch (err: any) {
       if (err?.status === 401 || err?.message?.includes('401')) {
         setError('Session expired or unauthorized. Please log in again.');

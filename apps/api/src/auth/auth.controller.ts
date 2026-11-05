@@ -48,8 +48,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Logout current session' })
-  async logout(@Request() req: any, @Body() body: { refreshToken: string }) {
-    await this.authService.logout(req.user.sub, body.refreshToken);
+  async logout(@Request() req: any, @Body() body?: { refreshToken?: string }) {
+    await this.authService.logout(req.user.sub, body?.refreshToken);
     return { success: true };
   }
 

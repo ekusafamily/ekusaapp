@@ -193,17 +193,23 @@ export class AuthService {
     return tokens;
   }
 
-  async logout(userId: string, refreshToken: string): Promise<void> {
-    const session = await this.prisma.authSession.findUnique({
-      where: { refreshToken },
-    });
-
-    if (session && (!userId || session.userId === userId)) {
-      await this.prisma.authSession.update({
-        where: { id: session.id },
-        data: { revokedAt: new Date() },
+  async logout(userId: string, refreshToken?: string): Promise<void> {
+    if (refreshToken) {
+      const session = await this.prisma.authSession.findUnique({
+        where: { refreshToken },
       });
+
+      if (session && (!userId || session.userId === userId)) {
+        await this.prisma.authSession.update({
+          where: { id: session.id },
+          data: { revokedAt: new Date() },
+        });
+        return;
+      }
     }
+
+    // Fallback: revoke all active sessions for this user
+    await this.logoutAllDevices(userId);
   }
 
   async logoutAllDevices(userId: string): Promise<void> {

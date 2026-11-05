@@ -54,14 +54,8 @@ export class AnnouncementsService {
     const where: any = {};
     if (category && category !== 'all') where.category = category;
     if (status && status !== 'all') where.status = status;
+    else if (!status) where.status = 'published';
     if (priority && priority !== 'all') where.priority = priority;
-
-    // If userId provided, filter by audience targeting
-    if (userId) {
-      // This would be more complex in reality - checking user's membership, campus, roles, etc.
-      // For now, we'll just get published announcements
-      where.status = 'published';
-    }
 
     const [items, total] = await Promise.all([
       this.prisma.announcement.findMany({
@@ -315,6 +309,8 @@ export class AnnouncementsService {
   }
 
   private async checkAudienceAccess(announcement: any, userId: string): Promise<boolean> {
+    if (!announcement.targets || announcement.targets.length === 0) return true;
+
     // Get user details
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -325,7 +321,7 @@ export class AnnouncementsService {
       },
     });
 
-    if (!user) return false;
+    if (!user) return true; // Default allow for published announcements
 
     // Check each target
     for (const target of announcement.targets) {
@@ -334,7 +330,7 @@ export class AnnouncementsService {
       }
     }
 
-    return false;
+    return true;
   }
 
   private async matchesTarget(user: any, target: any): Promise<boolean> {
