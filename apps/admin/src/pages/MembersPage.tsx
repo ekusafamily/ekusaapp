@@ -1,18 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { apiClient, handleResponse } from '../lib/apiClient';
 
-interface User {
+interface MemberItem {
   id: string;
-  username: string;
+  registrationNumber?: string;
+  campus?: string;
+  course?: string;
+  yearOfStudy?: number;
+  membershipStatus?: string;
+  createdAt?: string;
+  submittedAt?: string;
+  user?: {
+    id: string;
+    username: string;
+    email?: string;
+    accountStatus: string;
+    createdAt: string;
+    profile?: { displayName?: string; avatarObjectKey?: string };
+  };
+  username?: string;
   email?: string;
-  accountStatus: string;
-  createdAt: string;
+  accountStatus?: string;
   profile?: { displayName?: string; avatarObjectKey?: string };
-  membership?: { membershipStatus: string };
 }
 
 export function MembersPage() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [items, setItems] = useState<MemberItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
@@ -21,26 +34,30 @@ export function MembersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchMembers = async () => {
+      setIsLoading(true);
+      setError('');
       try {
         const response = await apiClient.get('/admin/memberships', {
           params: { status: statusFilter, page, limit: 20 },
         });
         const data = handleResponse(response);
-        setUsers(data.items);
-        setTotalPages(data.totalPages);
+        setItems(data.items || []);
+        setTotalPages(data.totalPages || 1);
       } catch (err: any) {
         setError('Failed to load members');
       } finally {
         setIsLoading(false);
       }
     };
-    fetchUsers();
-  }, [page, statusFilter, search]);
+    fetchMembers();
+  }, [page, statusFilter]);
 
   const statusColors: Record<string, string> = {
     registered: 'var(--color-text-tertiary)',
+    pending: 'var(--color-warning)',
     membership_pending: 'var(--color-warning)',
+    verified: 'var(--color-success)',
     verified_member: 'var(--color-success)',
     rejected: 'var(--color-error)',
     suspended: 'var(--color-warning)',
@@ -49,12 +66,25 @@ export function MembersPage() {
 
   const statusLabels: Record<string, string> = {
     registered: 'Registered',
+    pending: 'Pending',
     membership_pending: 'Pending',
+    verified: 'Verified',
     verified_member: 'Verified',
     rejected: 'Rejected',
     suspended: 'Suspended',
     deactivated: 'Deactivated',
   };
+
+  const filteredItems = items.filter(item => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    const userInfo = item.user || item;
+    const name = userInfo.profile?.displayName || userInfo.username || '';
+    const username = userInfo.username || '';
+    const regNo = item.registrationNumber || '';
+    const campus = item.campus || '';
+    return name.toLowerCase().includes(q) || username.toLowerCase().includes(q) || regNo.toLowerCase().includes(q) || campus.toLowerCase().includes(q);
+  });
 
   if (isLoading) return <div style={styles.loading}>Loading members...</div>;
   if (error) return <div style={styles.error}>{error}</div>;
@@ -62,19 +92,18 @@ export function MembersPage() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>Members</h2>
+        <h2 style={styles.title}>Members Directory</h2>
         <div style={styles.filters}>
           <select style={styles.select} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="all">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="verified">Verified</option>
+            <option value="pending">Pending Verification</option>
+            <option value="verified">Verified Members</option>
             <option value="rejected">Rejected</option>
-            <option value="suspended">Suspended</option>
           </select>
           <input
             type="text"
             style={styles.searchInput}
-            placeholder="Search users..."
+            placeholder="Search by name, username, reg no..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -85,60 +114,79 @@ export function MembersPage() {
         <table style={styles.table}>
           <thead>
             <tr style={styles.headerRow}>
-              <th style={styles.headerCell}>User</th>
-              <th style={styles.headerCell}>Status</th>
+              <th style={styles.headerCell}>Member</th>
+              <th style={styles.headerCell}>Reg. Number</th>
+              <th style={styles.headerCell}>Campus & Course</th>
+              <th style={styles.headerCell}>Account Status</th>
               <th style={styles.headerCell}>Membership</th>
-              <th style={styles.headerCell}>Joined</th>
-              <th style={styles.headerCell}>Actions</th>
+              <th style={styles.headerCell}>Joined / Submitted</th>
             </tr>
           </thead>
           <tbody>
-            {users.map(user => (
-              <tr key={user.id} style={styles.row}>
-                <td style={styles.cell}>
-                  <div style={styles.userInfo}>
-                    <div style={{ ...styles.avatar, backgroundColor: 'var(--color-primary-container)' }}>
-                      {user.profile?.displayName?.[0]?.toUpperCase() || user.username[0].toUpperCase()}
-                    </div>
-                    <div>
-                      <span style={styles.userName}>{user.profile?.displayName || user.username}</span>
-                      <span style={styles.userUsername}>@{user.username}</span>
-                    </div>
-                  </div>
-                </td>
-                <td style={styles.cell}>
-                  <span style={{
-                    ...styles.statusBadge,
-                    backgroundColor: `${statusColors[user.accountStatus] || 'var(--color-text-tertiary)'}20`,
-                    color: statusColors[user.accountStatus] || 'var(--color-text-tertiary)',
-                  }}>
-                    {statusLabels[user.accountStatus] || user.accountStatus}
-                  </span>
-                </td>
-                <td style={styles.cell}>
-                  <span style={{
-                    ...styles.statusBadge,
-                    backgroundColor: user.membership?.membershipStatus === 'verified'
-                      ? 'var(--color-success-container)'
-                      : 'var(--color-warning-container)',
-                    color: user.membership?.membershipStatus === 'verified'
-                      ? 'var(--color-success)'
-                      : 'var(--color-warning)',
-                  }}>
-                    {user.membership?.membershipStatus || 'None'}
-                  </span>
-                </td>
-                <td style={styles.cell}>
-                  {new Date(user.createdAt).toLocaleDateString()}
-                </td>
-                <td style={styles.cell}>
-                  <div style={styles.actions}>
-                    <button style={styles.actionButton}>View</button>
-                    <button style={styles.actionButtonSecondary}>Edit</button>
-                  </div>
+            {filteredItems.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ ...styles.cell, textAlign: 'center', padding: 'var(--spacing-xl)' }}>
+                  No members found matching criteria
                 </td>
               </tr>
-            ))}
+            ) : (
+              filteredItems.map(item => {
+                const u = item.user || item;
+                const username = u.username || 'Unknown';
+                const displayName = u.profile?.displayName || username;
+                const accountStatus = u.accountStatus || 'registered';
+                const memStatus = item.membershipStatus || 'none';
+                const dateStr = item.submittedAt || u.createdAt || item.createdAt;
+
+                return (
+                  <tr key={item.id} style={styles.row}>
+                    <td style={styles.cell}>
+                      <div style={styles.userInfo}>
+                        <div style={{ ...styles.avatar, backgroundColor: 'var(--color-primary-container)' }}>
+                          {displayName[0]?.toUpperCase() || 'U'}
+                        </div>
+                        <div>
+                          <span style={styles.userName}>{displayName}</span>
+                          <span style={styles.userUsername}>@{username}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={styles.cell}>{item.registrationNumber || 'N/A'}</td>
+                    <td style={styles.cell}>
+                      {item.campus ? (
+                        <div>
+                          <span style={{ display: 'block', fontWeight: 'var(--font-weight-medium)' }}>{item.campus}</span>
+                          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-tertiary)' }}>
+                            {item.course} {item.yearOfStudy ? `(Year ${item.yearOfStudy})` : ''}
+                          </span>
+                        </div>
+                      ) : 'N/A'}
+                    </td>
+                    <td style={styles.cell}>
+                      <span style={{
+                        ...styles.statusBadge,
+                        backgroundColor: `${statusColors[accountStatus] || 'var(--color-text-tertiary)'}20`,
+                        color: statusColors[accountStatus] || 'var(--color-text-tertiary)',
+                      }}>
+                        {statusLabels[accountStatus] || accountStatus}
+                      </span>
+                    </td>
+                    <td style={styles.cell}>
+                      <span style={{
+                        ...styles.statusBadge,
+                        backgroundColor: `${statusColors[memStatus] || 'var(--color-text-tertiary)'}20`,
+                        color: statusColors[memStatus] || 'var(--color-text-tertiary)',
+                      }}>
+                        {statusLabels[memStatus] || memStatus}
+                      </span>
+                    </td>
+                    <td style={styles.cell}>
+                      {dateStr ? new Date(dateStr).toLocaleDateString() : 'N/A'}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -279,23 +327,6 @@ const styles: Record<string, React.CSSProperties> = {
   actions: {
     display: 'flex',
     gap: 'var(--spacing-sm)',
-  },
-  actionButton: {
-    padding: 'var(--spacing-xs) var(--spacing-md)',
-    borderRadius: 'var(--border-radius-sm)',
-    backgroundColor: 'var(--color-primary)',
-    color: 'var(--color-on-primary)',
-    fontSize: 'var(--font-size-xs)',
-    fontWeight: 'var(--font-weight-medium)',
-  },
-  actionButtonSecondary: {
-    padding: 'var(--spacing-xs) var(--spacing-md)',
-    borderRadius: 'var(--border-radius-sm)',
-    backgroundColor: 'var(--color-surface-variant)',
-    color: 'var(--color-text-secondary)',
-    fontSize: 'var(--font-size-xs)',
-    fontWeight: 'var(--font-weight-medium)',
-    border: '1px solid var(--color-border)',
   },
   pagination: {
     display: 'flex',
