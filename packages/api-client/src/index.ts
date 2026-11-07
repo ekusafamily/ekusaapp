@@ -13,7 +13,16 @@ import type { ApiResponse, PaginatedResponse } from '@ekusa/shared-types';
 
 declare const __DEV__: boolean;
 
-const API_BASE_URL = typeof __DEV__ !== 'undefined' && __DEV__ ? 'http://10.0.2.2:3000/api/v1' : 'https://api.ekusa.example.com/api/v1';
+const getApiBaseUrl = (): string => {
+  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_BASE_URL) {
+    return process.env.EXPO_PUBLIC_API_BASE_URL;
+  }
+  return typeof __DEV__ !== 'undefined' && __DEV__
+    ? 'http://10.0.2.2:3000/api/v1'
+    : 'https://api.ekusa.example.com/api/v1';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const STORAGE_KEYS = {
   ACCESS_TOKEN: 'ekusa_access_token',
