@@ -21,4 +21,7 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    allowedHosts: ['admin.dekutsochoiceawards.site', 'localhost'],
+  },
 });
