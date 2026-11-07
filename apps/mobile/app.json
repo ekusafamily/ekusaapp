@@ -6,10 +6,17 @@
     "orientation": "portrait",
     "scheme": "ekusa",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.jpg",
+    "splash": {
+      "image": "./assets/splash.jpg",
+      "resizeMode": "cover",
+      "backgroundColor": "#1B5E20"
+    },
     "android": {
       "package": "com.homeniembu.ekusa",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.jpg",
         "backgroundColor": "#ffffff"
       }
     },
