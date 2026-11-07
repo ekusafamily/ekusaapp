@@ -19,7 +19,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { deviceRegistrationSchema } from '@ekusa/validation';
 
 @ApiTags('Messaging')
-@Controller('messaging')
+@Controller(['messaging', ''])
 export class MessagingController {
   constructor(private readonly messagingService: MessagingService) {}
 

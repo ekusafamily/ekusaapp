@@ -21,12 +21,8 @@ exports.phoneNumberSchema = zod_1.z
     .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format (E.164)');
 exports.passwordSchema = zod_1.z
     .string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(128, 'Password must be at most 128 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number')
-    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
+    .min(6, 'Password must be at least 6 characters')
+    .max(128, 'Password must be at most 128 characters');
 exports.uuidSchema = zod_1.z.string().uuid('Invalid UUID format');
 exports.dateTimeSchema = zod_1.z.string().datetime({ offset: true });
 exports.positiveIntSchema = zod_1.z.number().int().positive();

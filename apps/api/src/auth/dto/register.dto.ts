@@ -24,13 +24,9 @@ export class RegisterDto {
   @Matches(/^\+?[1-9]\d{1,14}$/, { message: 'Invalid phone number format (E.164)' })
   phoneNumber?: string;
 
-  @ApiProperty({ example: 'SecurePass123!', minLength: 8, maxLength: 128 })
+  @ApiProperty({ example: 'password123', minLength: 6, maxLength: 128 })
   @IsString()
-  @MinLength(8)
-  @MaxLength(128)
-  @Matches(/[A-Z]/, { message: 'Password must contain at least one uppercase letter' })
-  @Matches(/[a-z]/, { message: 'Password must contain at least one lowercase letter' })
-  @Matches(/[0-9]/, { message: 'Password must contain at least one number' })
-  @Matches(/[^A-Za-z0-9]/, { message: 'Password must contain at least one special character' })
+  @MinLength(6, { message: 'Password must be at least 6 characters' })
+  @MaxLength(128, { message: 'Password must be at most 128 characters' })
   password: string;
 }

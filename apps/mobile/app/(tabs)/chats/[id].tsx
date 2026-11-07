@@ -4,8 +4,19 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, ActivityIndicator } from 'react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  SafeAreaView,
+} from 'react-native';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { messagingApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
@@ -14,63 +25,99 @@ import { Avatar } from '@/components/Avatar';
 import { cryptoService } from '@/services/cryptoService';
 import { storageService } from '@/services/storageService';
 import { router, useLocalSearchParams } from 'expo-router';
+import { ArrowLeft, Send, ShieldCheck } from 'lucide-react-native';
+
+function decodeBase64Safe(str: string): string {
+  if (!str) return '';
+  try {
+    if (typeof atob === 'function') {
+      return decodeURIComponent(escape(atob(str)));
+    }
+  } catch {
+    try {
+      return atob(str);
+    } catch {
+      return str;
+    }
+  }
+  return str;
+}
 
 export default function ChatScreen() {
-  const params = useLocalSearchParams<{ id?: string; conversationId?: string }>();
+  const params = useLocalSearchParams<{ id?: string; conversationId?: string; recipientName?: string }>();
   const conversationId = (params.conversationId || params.id || '') as string;
   const { user } = useAuthStore();
   const { colors } = useTheme();
   const queryClient = useQueryClient();
   const [newMessage, setNewMessage] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
+  const [otherUser, setOtherUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  const keyboardShown = useRef(false);
 
   // Load messages from local storage first, then sync with server
   useEffect(() => {
+    if (!conversationId) return;
     loadMessages();
-    setupRealtimeListener();
-    return () => cleanupRealtimeListener();
   }, [conversationId]);
 
   const loadMessages = async () => {
     try {
-      // Load from local storage
+      // 1. Load cached messages from local storage
       const localMessages = await storageService.getMessages(conversationId);
-      setMessages(localMessages.reverse()); // oldest first
+      if (localMessages && localMessages.length > 0) {
+        setMessages(localMessages);
+      }
 
-      // Fetch from server
-      const serverMessages = await queryClient.fetchQuery({
-        queryKey: ['messages', conversationId],
-        queryFn: () => messagingApi.getConversation(conversationId),
-      });
+      // 2. Fetch latest conversation & messages from server
+      const serverResponse: any = await messagingApi.getConversation(conversationId);
+      if (serverResponse) {
+        // Resolve other participant
+        const other = serverResponse.members?.find(
+          (m: any) => (m.userId && m.userId !== user?.id) || (m.user && m.user.id !== user?.id)
+        );
+        if (other?.user) {
+          setOtherUser({
+            id: other.user.id,
+            username: other.user.username,
+            displayName: other.user.profile?.displayName || other.user.username,
+            avatarUrl: other.user.profile?.avatarUrl,
+          });
+        }
 
-      // Merge and deduplicate
-      // In real app, do proper sync
+        if (serverResponse.messages && Array.isArray(serverResponse.messages)) {
+          const parsed = serverResponse.messages.map((m: any) => ({
+            id: m.id,
+            conversationId: m.conversationId,
+            senderId: m.senderId,
+            senderName: m.sender?.username || (m.senderId === user?.id ? 'You' : 'Member'),
+            content: m.content || decodeBase64Safe(m.ciphertext),
+            messageType: m.messageType || 'text',
+            status: m.status || 'delivered',
+            sentAt: m.sentAt,
+          }));
+          setMessages(parsed);
+        }
+      }
       setIsLoading(false);
-      scrollToBottom();
+      setTimeout(scrollToBottom, 150);
     } catch (error) {
       console.error('Failed to load messages:', error);
       setIsLoading(false);
     }
   };
 
-  const setupRealtimeListener = () => {
-    // Set up WebSocket listener for new messages
-    // In real app, connect to WebSocket gateway
-  };
-
-  const cleanupRealtimeListener = () => {
-    // Clean up WebSocket
-  };
-
   const sendMessageMutation = useMutation({
     mutationFn: async (text: string) => {
       // Encrypt message
       const encrypted = await cryptoService.encryptMessage(
-        { identityKey: new Uint8Array(), registrationId: 0, preKey: { keyId: 0, publicKey: new Uint8Array() }, signedPreKey: { keyId: 0, publicKey: new Uint8Array(), signature: new Uint8Array() } },
+        {
+          identityKey: new Uint8Array(),
+          registrationId: 0,
+          preKey: { keyId: 0, publicKey: new Uint8Array() },
+          signedPreKey: { keyId: 0, publicKey: new Uint8Array(), signature: new Uint8Array() },
+        },
         text
       );
 
@@ -91,6 +138,7 @@ export default function ChatScreen() {
         m.id === sentMessage?.id ? { ...m, status: 'sent' } : m
       ));
       setIsSending(false);
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
       scrollToBottom();
     },
     onError: (error) => {
@@ -106,7 +154,7 @@ export default function ChatScreen() {
     setNewMessage('');
     setIsSending(true);
 
-    // Optimistic update
+    // Optimistic message update
     const tempMessage = {
       id: `temp_${Date.now()}`,
       conversationId,
@@ -121,13 +169,15 @@ export default function ChatScreen() {
     await storageService.saveMessage(tempMessage);
     scrollToBottom();
 
-    // Send encrypted
+    // Send to backend
     sendMessageMutation.mutate(text);
   };
 
   const scrollToBottom = useCallback(() => {
-    flatListRef.current?.scrollToEnd({ animated: true });
-  }, []);
+    if (flatListRef.current && messages.length > 0) {
+      flatListRef.current.scrollToEnd({ animated: true });
+    }
+  }, [messages.length]);
 
   const renderMessage = ({ item }: { item: any }) => {
     const isOwn = item.senderId === user?.id;
@@ -144,23 +194,23 @@ export default function ChatScreen() {
         {!isOwn && (
           <Avatar
             source={item.senderAvatar ? { uri: item.senderAvatar } : undefined}
-            name={item.senderName}
+            name={item.senderName || otherUser?.displayName || otherUser?.username}
             size="small"
             style={styles.messageAvatar}
           />
         )}
         <View style={[
           styles.messageBubble,
-          isOwn ? styles.bubbleOwn : styles.bubbleOther,
+          isOwn ? [styles.bubbleOwn, { backgroundColor: colors.primary }] : [styles.bubbleOther, { backgroundColor: colors.surfaceVariant }],
         ]}>
           <Text style={[
             styles.messageText,
-            isOwn ? styles.textOwn : styles.textOther,
+            isOwn ? styles.textOwn : [styles.textOther, { color: colors.textPrimary }],
           ]}>
             {item.content}
           </Text>
           <View style={styles.messageMeta}>
-            <Text style={[styles.messageTime, { color: colors.textTertiary }]}>
+            <Text style={[styles.messageTime, { color: isOwn ? 'rgba(255,255,255,0.7)' : colors.textTertiary }]}>
               {formatTime(item.sentAt)}
             </Text>
             {isOwn && (
@@ -185,71 +235,140 @@ export default function ChatScreen() {
     );
   }
 
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={[styles.container, { backgroundColor: colors.background }]}
-      keyboardVerticalOffset={0}
-    >
-      {/* Messages List */}
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={(item) => item.id}
-        renderItem={renderMessage}
-        onContentSizeChange={scrollToBottom}
-        onLayout={() => scrollToBottom()}
-        contentContainerStyle={styles.listContent}
-        inverted
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-      />
+  const partnerTitle = otherUser?.displayName || otherUser?.username || params.recipientName || 'Member';
 
-      {/* Input Area */}
-      <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-        <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: colors.surfaceVariant, color: colors.textPrimary, borderColor: colors.border },
-          ]}
-          placeholder="Message..."
-          placeholderTextColor={colors.textTertiary}
-          value={newMessage}
-          onChangeText={setNewMessage}
-          multiline
-          maxLength={4000}
-          onSubmitEditing={handleSend}
-          blurOnSubmit={false}
-        />
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Chat Header */}
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          style={[
-            styles.sendButton,
-            { backgroundColor: colors.primary },
-            !newMessage.trim() && { opacity: 0.5 },
-          ]}
-          onPress={handleSend}
-          disabled={!newMessage.trim() || isSending}
-          activeOpacity={0.7}
+          style={styles.backButton}
+          onPress={() => router.back()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          {isSending ? (
-            <ActivityIndicator color={colors.onPrimary} size="small" />
-          ) : (
-            <Text style={{ color: colors.onPrimary, fontSize: 18 }}>➤</Text>
-          )}
+          <ArrowLeft size={22} color={colors.textPrimary} />
         </TouchableOpacity>
+        <Avatar
+          source={otherUser?.avatarUrl ? { uri: otherUser.avatarUrl } : undefined}
+          name={partnerTitle}
+          size="medium"
+        />
+        <View style={styles.headerInfo}>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+            {partnerTitle}
+          </Text>
+          <View style={styles.encryptionBadge}>
+            <ShieldCheck size={12} color={colors.success} />
+            <Text style={[styles.encryptionText, { color: colors.textTertiary }]}>
+              End-to-end encrypted
+            </Text>
+          </View>
+        </View>
       </View>
-    </KeyboardAvoidingView>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.chatArea}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        {/* Messages List */}
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item) => item.id}
+          renderItem={renderMessage}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={scrollToBottom}
+          onLayout={scrollToBottom}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <ShieldCheck size={40} color={colors.primary} />
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Encrypted Session</Text>
+              <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
+                Messages are private and end-to-end encrypted. Send a message to start chatting.
+              </Text>
+            </View>
+          }
+        />
+
+        {/* Input Area */}
+        <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+          <TextInput
+            style={[
+              styles.input,
+              { backgroundColor: colors.surfaceVariant, color: colors.textPrimary, borderColor: colors.border },
+            ]}
+            placeholder="Type a message..."
+            placeholderTextColor={colors.textTertiary}
+            value={newMessage}
+            onChangeText={setNewMessage}
+            multiline
+            maxLength={4000}
+            blurOnSubmit={false}
+          />
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              { backgroundColor: colors.primary },
+              !newMessage.trim() && { opacity: 0.5 },
+            ]}
+            onPress={handleSend}
+            disabled={!newMessage.trim() || isSending}
+            activeOpacity={0.7}
+          >
+            {isSending ? (
+              <ActivityIndicator color={colors.onPrimary} size="small" />
+            ) : (
+              <Send size={18} color={colors.onPrimary} />
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 function formatTime(dateString: string): string {
+  if (!dateString) return '';
   const date = new Date(dateString);
   return date.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    gap: Spacing.sm,
+  },
+  backButton: {
+    padding: Spacing.xs,
+  },
+  headerInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  headerTitle: {
+    fontSize: Typography.sizes.md,
+    fontWeight: Typography.weights.semibold,
+  },
+  encryptionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  encryptionText: {
+    fontSize: Typography.sizes.xs,
+  },
+  chatArea: {
     flex: 1,
   },
   loadingContainer: {
@@ -260,10 +379,29 @@ const styles = StyleSheet.create({
   listContent: {
     padding: Spacing.md,
     gap: Spacing.sm,
+    flexGrow: 1,
+    justifyContent: 'flex-end',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  emptyTitle: {
+    fontSize: Typography.sizes.md,
+    fontWeight: Typography.weights.semibold,
+  },
+  emptyText: {
+    fontSize: Typography.sizes.sm,
+    textAlign: 'center',
+    maxWidth: 260,
   },
   messageContainer: {
     flexDirection: 'row',
     gap: Spacing.sm,
+    marginVertical: 2,
   },
   messageOwn: {
     justifyContent: 'flex-end',
@@ -273,6 +411,7 @@ const styles = StyleSheet.create({
   },
   messageAvatar: {
     marginBottom: 4,
+    alignSelf: 'flex-end',
   },
   messageBubble: {
     maxWidth: '75%',
@@ -281,11 +420,9 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
   },
   bubbleOwn: {
-    backgroundColor: Colors.light.primary,
     borderBottomRightRadius: Spacing.xs,
   },
   bubbleOther: {
-    backgroundColor: Colors.light.surfaceVariant,
     borderBottomLeftRadius: Spacing.xs,
   },
   messageText: {
@@ -295,14 +432,13 @@ const styles = StyleSheet.create({
   textOwn: {
     color: '#FFFFFF',
   },
-  textOther: {
-    color: Colors.light.textPrimary,
-  },
+  textOther: {},
   messageMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: Spacing.xs,
+    gap: Spacing.sm,
   },
   messageTime: {
     fontSize: Typography.sizes.xs,
@@ -323,7 +459,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     padding: Spacing.md,
     gap: Spacing.sm,
     borderTopWidth: 1,
@@ -331,7 +467,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     minHeight: 44,
-    maxHeight: 120,
+    maxHeight: 100,
     borderWidth: 1,
     borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.md,

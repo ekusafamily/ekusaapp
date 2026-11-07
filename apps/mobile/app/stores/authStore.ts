@@ -1,16 +1,18 @@
 /**
  * EKUSA Mobile App - Auth Store
- * Zustand store for authentication state management
+ * Zustand store for authentication state management with persisted tokens
  */
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authApi, userApi, clearAuth, isAuthenticated } from '@ekusa/api-client';
+import { authApi, userApi, clearAuth, setAuthTokens, isAuthenticated } from '@ekusa/api-client';
 import type { User } from '@ekusa/shared-types';
 
 interface AuthState {
   user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
   isInitialized: boolean;
   isLoading: boolean;
   error: string | null;
@@ -30,12 +32,17 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
+      accessToken: null,
+      refreshToken: null,
       isInitialized: false,
       isLoading: false,
       error: null,
 
       initialize: async () => {
-        if (get().isInitialized) return;
+        const state = get();
+        if (state.accessToken) {
+          setAuthTokens(state.accessToken, state.refreshToken);
+        }
 
         set({ isLoading: true });
         try {
@@ -47,7 +54,7 @@ export const useAuthStore = create<AuthState>()(
           }
         } catch {
           clearAuth();
-          set({ user: null, isInitialized: true, isLoading: false, error: 'Session expired. Please log in again.' });
+          set({ user: null, accessToken: null, refreshToken: null, isInitialized: true, isLoading: false, error: 'Session expired. Please log in again.' });
         }
       },
 
@@ -60,9 +67,23 @@ export const useAuthStore = create<AuthState>()(
       login: async (identifier, password) => {
         set({ isLoading: true, error: null });
         try {
-          await authApi.login({ identifier, password });
-          const response = await authApi.getCurrentUser();
-          set({ user: response as User, isLoading: false, error: null });
+          const res: any = await authApi.login({ identifier, password });
+          const userObj = res.user || res.data?.user;
+          const tokens = res.tokens || res.data?.tokens;
+
+          if (tokens?.accessToken) {
+            setAuthTokens(tokens.accessToken, tokens.refreshToken);
+            set({
+              user: userObj as User,
+              accessToken: tokens.accessToken,
+              refreshToken: tokens.refreshToken,
+              isLoading: false,
+              error: null,
+            });
+          } else {
+            const current = await authApi.getCurrentUser();
+            set({ user: current as User, isLoading: false, error: null });
+          }
         } catch (error: any) {
           set({ isLoading: false, error: error.message || 'Login failed' });
           throw error;
@@ -74,9 +95,23 @@ export const useAuthStore = create<AuthState>()(
         try {
           await authApi.register(data);
           // Auto-login to obtain JWT tokens
-          await authApi.login({ identifier: data.username, password: data.password });
-          const response = await authApi.getCurrentUser();
-          set({ user: response as User, isLoading: false, error: null });
+          const res: any = await authApi.login({ identifier: data.username, password: data.password });
+          const userObj = res.user || res.data?.user;
+          const tokens = res.tokens || res.data?.tokens;
+
+          if (tokens?.accessToken) {
+            setAuthTokens(tokens.accessToken, tokens.refreshToken);
+            set({
+              user: userObj as User,
+              accessToken: tokens.accessToken,
+              refreshToken: tokens.refreshToken,
+              isLoading: false,
+              error: null,
+            });
+          } else {
+            const current = await authApi.getCurrentUser();
+            set({ user: current as User, isLoading: false, error: null });
+          }
         } catch (error: any) {
           set({ isLoading: false, error: error.message || 'Registration failed' });
           throw error;
@@ -91,7 +126,7 @@ export const useAuthStore = create<AuthState>()(
           // Ignore logout errors
         } finally {
           clearAuth();
-          set({ user: null, isLoading: false });
+          set({ user: null, accessToken: null, refreshToken: null, isLoading: false });
         }
       },
 
@@ -109,7 +144,16 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'ekusa-auth-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ user: state.user }),
+      partialize: (state) => ({
+        user: state.user,
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.accessToken) {
+          setAuthTokens(state.accessToken, state.refreshToken);
+        }
+      },
     }
   )
 );

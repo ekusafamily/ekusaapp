@@ -248,12 +248,22 @@ export class MessagingService {
     const membership = conversation.members.find((m: any) => m.userId === userId);
     if (!membership) throw new ForbiddenException('Not a member of this conversation');
 
-    // Get sender's device
-    const device = await this.prisma.device.findFirst({
+    // Get sender's device, or auto-create one if none exists
+    let device = await this.prisma.device.findFirst({
       where: { userId, deviceStatus: 'active' },
     });
 
-    if (!device) throw new BadRequestException('No active device found');
+    if (!device) {
+      device = await this.prisma.device.create({
+        data: {
+          userId,
+          deviceName: 'Primary Device',
+          identityPublicKey: `id_pub_${userId.slice(0, 8)}_${Date.now()}`,
+          registrationId: Math.floor(Math.random() * 100000) + 1,
+          deviceStatus: 'active',
+        },
+      });
+    }
 
     // Determine recipients
     const recipientMembers = conversation.members.filter((m: any) => m.userId !== userId);

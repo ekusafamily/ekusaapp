@@ -338,9 +338,9 @@ export class AnnouncementsService {
       case 'everyone':
         return true;
       case 'verified_members':
-        return user.membership?.membershipStatus === 'verified';
+        return user.membership?.membershipStatus === 'verified' || user.accountStatus === 'verified_member';
       case 'unverified_users':
-        return user.membership?.membershipStatus !== 'verified';
+        return user.membership?.membershipStatus !== 'verified' && user.accountStatus !== 'verified_member';
       case 'campus':
         return user.profile?.campus === target.targetValue || user.membership?.campus === target.targetValue;
       case 'committee':

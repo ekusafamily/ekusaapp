@@ -111,6 +111,15 @@ export class MembershipService {
     });
 
     if (!membership) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { accountStatus: true },
+      });
+
+      if (user?.accountStatus === 'verified_member') {
+        return { membershipStatus: 'verified' };
+      }
+
       return { membershipStatus: 'none' };
     }
 

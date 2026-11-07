@@ -154,7 +154,7 @@ export default function ProfileScreen() {
               </Text>
             </View>
           </View>
-          {membership && (
+          {membership && membership.registrationNumber && (
             <View style={styles.membershipDetails}>
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Registration No.</Text>

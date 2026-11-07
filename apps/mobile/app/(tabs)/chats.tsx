@@ -3,19 +3,32 @@
  * Conversation list for private messaging
  */
 
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, RefreshControl } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
-import { messagingApi } from '@ekusa/api-client';
+import React, { useMemo, useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  RefreshControl,
+  Modal,
+  ActivityIndicator,
+  SafeAreaView,
+} from 'react-native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { messagingApi, userApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { Avatar } from '@/components/Avatar';
 import { router } from 'expo-router';
+import { Plus, Search, X, MessageSquare } from 'lucide-react-native';
 
 export default function ChatsScreen() {
   const { user } = useAuthStore();
   const { colors, colorScheme } = useTheme();
+  const queryClient = useQueryClient();
 
   const { data: conversations, isLoading, refetch } = useQuery({
     queryKey: ['conversations'],
@@ -24,10 +37,73 @@ export default function ChatsScreen() {
     staleTime: 30 * 1000,
   });
 
-  const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // New Chat Modal States
+  const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isStartingChat, setIsStartingChat] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const handleRefresh = async () => {
     await refetch();
+  };
+
+  // Perform user search when query changes or modal opens
+  useEffect(() => {
+    if (!isSearchModalVisible) return;
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      setSearchError(null);
+      try {
+        const response: any = await userApi.searchUsers(userSearchQuery.trim(), 20, 0);
+        const usersList: any[] = response?.items || response || [];
+        // Filter out current logged in user
+        const filtered = usersList.filter((u: any) => u.id !== user?.id);
+        setSearchResults(filtered);
+      } catch (err: any) {
+        console.error('Failed to search users:', err);
+        setSearchError(err.message || 'Unable to load members');
+      } finally {
+        setIsSearching(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [userSearchQuery, isSearchModalVisible, user?.id]);
+
+  const handleStartChat = async (selectedUser: any) => {
+    if (isStartingChat) return;
+    setIsStartingChat(selectedUser.id);
+    setSearchError(null);
+    try {
+      const conv: any = await messagingApi.createConversation({
+        recipientId: selectedUser.id,
+      });
+
+      // Refresh conversations list cache
+      await queryClient.invalidateQueries({ queryKey: ['conversations'] });
+
+      setIsSearchModalVisible(false);
+      setUserSearchQuery('');
+      setIsStartingChat(null);
+
+      // Navigate into the active conversation
+      const conversationId = conv?.id || conv?.data?.id;
+      if (conversationId) {
+        router.push({
+          pathname: '/(tabs)/chats/[id]',
+          params: { id: conversationId, conversationId },
+        });
+      }
+    } catch (err: any) {
+      console.error('Failed to start chat session:', err);
+      setSearchError(err.message || 'Failed to start conversation. Please try again.');
+      setIsStartingChat(null);
+    }
   };
 
   // Filter conversations by search query
@@ -84,7 +160,7 @@ export default function ChatsScreen() {
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No conversations yet</Text>
             <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-              Search for users to start a new private conversation
+              Tap the + button below to find members and start a chat session
             </Text>
           </View>
         }
@@ -93,6 +169,141 @@ export default function ChatsScreen() {
         }
         contentContainerStyle={styles.listContent}
       />
+
+      {/* Floating Action Button for New Chat */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        onPress={() => {
+          setIsSearchModalVisible(true);
+          setUserSearchQuery('');
+        }}
+        activeOpacity={0.85}
+        accessibilityLabel="Start new chat"
+        accessibilityRole="button"
+      >
+        <Plus size={26} color={colors.onPrimary} />
+      </TouchableOpacity>
+
+      {/* Search Users Modal */}
+      <Modal
+        visible={isSearchModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => {
+          if (!isStartingChat) setIsSearchModalVisible(false);
+        }}
+      >
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+          {/* Modal Header */}
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <View>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>New Chat</Text>
+              <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+                Select a member to start a chat session
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.modalCloseButton, { backgroundColor: colors.surfaceVariant }]}
+              onPress={() => setIsSearchModalVisible(false)}
+              disabled={!!isStartingChat}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <X size={20} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* User Search Input */}
+          <View style={[styles.modalSearchBox, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+            <View style={[styles.modalSearchInputContainer, { backgroundColor: colors.surfaceVariant }]}>
+              <Search size={18} color={colors.textTertiary} style={styles.searchIcon} />
+              <TextInput
+                style={[styles.modalSearchInput, { color: colors.textPrimary }]}
+                placeholder="Search by username or name..."
+                placeholderTextColor={colors.textTertiary}
+                value={userSearchQuery}
+                onChangeText={setUserSearchQuery}
+                autoFocus
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {userSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setUserSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <X size={16} color={colors.textTertiary} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Search Error Notice */}
+          {searchError && (
+            <View style={[styles.errorBox, { backgroundColor: colors.errorContainer }]}>
+              <Text style={[styles.errorText, { color: colors.error }]}>{searchError}</Text>
+            </View>
+          )}
+
+          {/* Search Results List */}
+          {isSearching && searchResults.length === 0 ? (
+            <View style={styles.centerContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.centerText, { color: colors.textSecondary }]}>Searching members...</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={searchResults}
+              keyExtractor={(item: any) => item.id}
+              contentContainerStyle={styles.resultsListContent}
+              renderItem={({ item }) => {
+                const isSelected = isStartingChat === item.id;
+                return (
+                  <TouchableOpacity
+                    style={[styles.userItem, { backgroundColor: colors.surface }]}
+                    onPress={() => handleStartChat(item)}
+                    disabled={!!isStartingChat}
+                    activeOpacity={0.7}
+                  >
+                    <Avatar
+                      source={item.avatarUrl ? { uri: item.avatarUrl } : undefined}
+                      name={item.displayName || item.username}
+                      size="medium"
+                    />
+                    <View style={styles.userInfo}>
+                      <Text style={[styles.userDisplayName, { color: colors.textPrimary }]} numberOfLines={1}>
+                        {item.displayName || item.username}
+                      </Text>
+                      <Text style={[styles.userUsername, { color: colors.textSecondary }]} numberOfLines={1}>
+                        @{item.username}
+                        {item.campus ? ` • ${item.campus}` : ''}
+                      </Text>
+                    </View>
+                    <View style={styles.actionContainer}>
+                      {isSelected ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <View style={[styles.chatActionButton, { backgroundColor: colors.surfaceVariant }]}>
+                          <MessageSquare size={16} color={colors.primary} />
+                          <Text style={[styles.chatActionText, { color: colors.primary }]}>Chat</Text>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
+              ListEmptyComponent={
+                !isSearching ? (
+                  <View style={styles.centerContainer}>
+                    <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No members found</Text>
+                    <Text style={[styles.centerText, { color: colors.textTertiary }]}>
+                      {userSearchQuery.trim()
+                        ? `No members matching "${userSearchQuery}"`
+                        : 'No other members registered yet'}
+                    </Text>
+                  </View>
+                ) : null
+              }
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 }
@@ -282,6 +493,127 @@ const styles = StyleSheet.create({
   },
   authButtonText: {
     fontSize: Typography.sizes.md,
+    fontWeight: Typography.weights.semibold,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    zIndex: 10,
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+  },
+  modalSubtitle: {
+    fontSize: Typography.sizes.sm,
+    marginTop: 2,
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalSearchBox: {
+    padding: Spacing.md,
+    borderBottomWidth: 1,
+  },
+  modalSearchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 44,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.md,
+  },
+  searchIcon: {
+    marginRight: Spacing.sm,
+  },
+  modalSearchInput: {
+    flex: 1,
+    fontSize: Typography.sizes.md,
+    height: '100%',
+  },
+  errorBox: {
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  errorText: {
+    fontSize: Typography.sizes.sm,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+    marginTop: 40,
+    gap: Spacing.sm,
+  },
+  centerText: {
+    fontSize: Typography.sizes.sm,
+    textAlign: 'center',
+  },
+  resultsListContent: {
+    paddingVertical: Spacing.sm,
+  },
+  userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.md,
+  },
+  userInfo: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  userDisplayName: {
+    fontSize: Typography.sizes.md,
+    fontWeight: Typography.weights.semibold,
+  },
+  userUsername: {
+    fontSize: Typography.sizes.sm,
+  },
+  actionContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chatActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+  },
+  chatActionText: {
+    fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.semibold,
   },
 });

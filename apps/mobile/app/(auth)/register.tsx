@@ -213,12 +213,8 @@ export default function RegisterScreen() {
 
           {/* Password Requirements */}
           <View style={styles.passwordRequirements}>
-            <Text style={[styles.requirementsTitle, { color: colors.textSecondary }]}>Password must contain:</Text>
-            <RequirementItem met={formData.password.length >= 8} text="At least 8 characters" colorScheme={colors} />
-            <RequirementItem met={/[A-Z]/.test(formData.password)} text="One uppercase letter" colorScheme={colors} />
-            <RequirementItem met={/[a-z]/.test(formData.password)} text="One lowercase letter" colorScheme={colors} />
-            <RequirementItem met={/[0-9]/.test(formData.password)} text="One number" colorScheme={colors} />
-            <RequirementItem met={/[^A-Za-z0-9]/.test(formData.password)} text="One special character" colorScheme={colors} />
+            <Text style={[styles.requirementsTitle, { color: colors.textSecondary }]}>Password requirement:</Text>
+            <RequirementItem met={formData.password.length >= 6} text="At least 6 characters" colorScheme={colors} />
           </View>
 
           <TouchableOpacity

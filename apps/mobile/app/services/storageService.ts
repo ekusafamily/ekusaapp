@@ -16,8 +16,7 @@ try {
   const { MMKV: MMKVClass } = require('react-native-mmkv');
   MMKV = new MMKVClass();
 } catch {
-  // MMKV not available, will use AsyncStorage
-  console.warn('MMKV not available, falling back to AsyncStorage');
+  // MMKV is not available (e.g. In Expo Go or when not installed); cleanly fall back to AsyncStorage
 }
 
 const STORAGE_PREFIXES = {

@@ -78,14 +78,14 @@ export class AuthService {
       parallelism: 1,
     });
 
-    // Create user
+    // Create user with verified status
     const user = await this.prisma.user.create({
       data: {
         username: data.username,
         email: data.email,
         phoneNumber: data.phoneNumber,
         passwordHash,
-        accountStatus: 'registered',
+        accountStatus: 'verified_member',
       },
     });
 
@@ -96,6 +96,20 @@ export class AuthService {
         displayName: data.username,
       },
     });
+
+    // Assign ordinary_member role if available
+    const ordinaryMemberRole = await this.prisma.role.findUnique({
+      where: { name: 'ordinary_member' },
+    });
+    if (ordinaryMemberRole) {
+      await this.prisma.userRole.create({
+        data: {
+          userId: user.id,
+          roleId: ordinaryMemberRole.id,
+          assignedBy: user.id,
+        },
+      });
+    }
 
     // Generate tokens
     const tokens = await this.generateTokens(user.id, user.username, user.accountStatus);
@@ -136,6 +150,15 @@ export class AuthService {
     }
     if (user.accountStatus === 'deactivated') {
       throw new UnauthorizedException('Account deactivated');
+    }
+
+    // Automatically ensure user is verified
+    if (user.accountStatus === 'registered') {
+      user.accountStatus = 'verified_member';
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { accountStatus: 'verified_member' },
+      });
     }
 
     // Generate tokens

@@ -58,6 +58,31 @@ function onTokenRefreshed(newToken: string): void {
   refreshSubscribers = [];
 }
 
+export function setAuthTokens(newAccessToken: string | null, newRefreshToken?: string | null): void {
+  accessToken = newAccessToken;
+  if (newRefreshToken !== undefined) {
+    refreshToken = newRefreshToken;
+  }
+  setStoredTokens(accessToken, refreshToken);
+  if (accessToken) {
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+  } else {
+    delete apiClient.defaults.headers.common['Authorization'];
+  }
+}
+
+export function getAuthTokens(): { accessToken: string | null; refreshToken: string | null } {
+  return { accessToken, refreshToken };
+}
+
+export function isAuthenticated(): boolean {
+  return !!accessToken;
+}
+
+export function clearAuth(): void {
+  clearTokens();
+}
+
 function clearTokens(): void {
   accessToken = null;
   refreshToken = null;
@@ -687,7 +712,3 @@ export const setAccessToken = (token: string | null) => {
 };
 
 export const getAccessToken = () => accessToken;
-
-export const isAuthenticated = () => !!accessToken;
-
-export const clearAuth = () => clearTokens();
