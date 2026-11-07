@@ -19,7 +19,7 @@ const getApiBaseUrl = (): string => {
   }
   return typeof __DEV__ !== 'undefined' && __DEV__
     ? 'http://10.0.2.2:3000/api/v1'
-    : 'https://api.ekusa.example.com/api/v1';
+    : 'https://api.dekutsochoiceawards.site/api/v1';
 };
 
 const API_BASE_URL = getApiBaseUrl();
