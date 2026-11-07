@@ -264,7 +264,73 @@ yarn format
 |-------------|---------|------------|
 | **Development** | Local dev | Docker Compose |
 | **Staging** | Pre-release testing | Render / K8s |
-| **Production** | Live users | Render / EKS/GKE |
+| **Production** | Live users | VPS (self-hosted), Render, EKS/GKE |
+
+### Deploy to a VPS (self-hosted)
+
+Tested on Ubuntu 22.04 LTS. The platform has three server-side pieces: the NestJS API, the Admin dashboard (served as a static build), and backing services (PostgreSQL + Redis via Docker Compose; in production these can be replaced by managed services such as Supabase — see `.env.example`). The mobile app is not hosted on the VPS; it ships through the app stores via Expo.
+
+1. **Provision the server** — any VPS with 2 vCPU / 4 GB RAM (Hetzner, DigitalOcean, Lightsail, etc.). Point `api.yourdomain.com` and `admin.yourdomain.com` A-records at the server IP.
+
+2. **Install dependencies**
+   ```bash
+   sudo apt update && sudo apt install -y docker.io docker-compose-plugin nginx certbot python3-certbot-nginx git
+   sudo systemctl enable --now docker
+   ```
+
+3. **Clone and configure**
+   ```bash
+   git clone <repo-url> /opt/ekusa && cd /opt/ekusa
+   cp .env.example .env   # fill in production values (DATABASE_URL, JWT_SECRET, Supabase, SMTP, FCM)
+   ```
+
+4. **Start backing services**
+   ```bash
+   docker compose up -d postgres redis   # MinIO is only needed if self-hosting object storage
+   ```
+
+5. **Build and run the API**
+   ```bash
+   docker build -f apps/api/Dockerfile -t ekusa-api:latest .
+   docker run -d --name ekusa-api --restart unless-stopped --env-file .env -p 3000:3000 ekusa-api:latest
+   docker run --rm --env-file .env --network host ekusa-api:latest npx prisma migrate deploy
+   ```
+
+6. **Build the Admin dashboard**
+   ```bash
+   cd apps/admin && yarn install && yarn build   # outputs dist/
+   ```
+
+7. **Reverse proxy + SSL (nginx)**
+   ```nginx
+   # /etc/nginx/sites-available/ekusa
+   server {
+     server_name api.yourdomain.com;
+     location / {
+       proxy_pass http://127.0.0.1:3000;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+     }
+   }
+   server {
+     server_name admin.yourdomain.com;
+     root /opt/ekusa/apps/admin/dist;
+     index index.html;
+     location / { try_files $uri $uri/ /index.html; }
+   }
+   ```
+   ```bash
+   sudo ln -s /etc/nginx/sites-available/ekusa /etc/nginx/sites-enabled/
+   sudo nginx -t && sudo systemctl reload nginx
+   sudo certbot --nginx -d api.yourdomain.com -d admin.yourdomain.com
+   ```
+
+8. **Lock down the firewall** — expose only 22/80/443; keep PostgreSQL (5432) and Redis (6379) internal:
+   ```bash
+   sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
+   ```
+
+9. **Updates** — `git pull`, rebuild the API image, then `docker stop ekusa-api && docker rm ekusa-api` and re-run step 5. Rebuild the admin bundle and reload nginx for frontend changes.
 
 ### Quick Deploy (Render)
 1. Connect GitHub repo to Render
