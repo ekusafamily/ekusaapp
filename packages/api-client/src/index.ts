@@ -518,52 +518,52 @@ export const welfareApi = {
 
 export const messagingApi = {
   listConversations: async () => {
-    const response = await apiClient.get<ApiResponse<unknown[]>>('/conversations');
+    const response = await apiClient.get<ApiResponse<unknown[]>>('/messaging/conversations');
     return handleResponse(response);
   },
 
   createConversation: async (data: { recipientId?: string; name?: string; description?: string; memberIds?: string[] }) => {
-    const response = await apiClient.post<ApiResponse<unknown>>('/conversations', data);
+    const response = await apiClient.post<ApiResponse<unknown>>('/messaging/conversations', data);
     return handleResponse(response);
   },
 
   getConversation: async (id: string) => {
-    const response = await apiClient.get<ApiResponse<unknown>>(`/conversations/${id}`);
+    const response = await apiClient.get<ApiResponse<unknown>>(`/messaging/conversations/${id}`);
     return handleResponse(response);
   },
 
   sendMessage: async (data: { conversationId: string; ciphertext: string; protocolMetadata: string; messageType?: string }) => {
-    const response = await apiClient.post<ApiResponse<unknown>>('/messages', data);
+    const response = await apiClient.post<ApiResponse<unknown>>('/messaging/messages', data);
     return handleResponse(response);
   },
 
   getPendingMessages: async (params: { limit?: number; beforeMessageId?: string }) => {
-    const response = await apiClient.get<ApiResponse<unknown[]>>('/messages/pending', { params });
+    const response = await apiClient.get<ApiResponse<unknown[]>>('/messaging/messages/pending', { params });
     return handleResponse(response);
   },
 
   acknowledgeMessage: async (messageId: string, conversationId: string) => {
-    const response = await apiClient.post<ApiResponse<void>>('/messages/acknowledge', { messageId, conversationId });
+    const response = await apiClient.post<ApiResponse<void>>('/messaging/messages/acknowledge', { messageId, conversationId });
     return handleResponse(response);
   },
 
   deleteMessage: async (messageId: string, deleteForEveryone: boolean) => {
-    const response = await apiClient.post<ApiResponse<void>>(`/messages/${messageId}/delete`, { deleteForEveryone });
+    const response = await apiClient.post<ApiResponse<void>>(`/messaging/messages/${messageId}/delete`, { deleteForEveryone });
     return handleResponse(response);
   },
 
   blockUser: async (userId: string) => {
-    const response = await apiClient.post<ApiResponse<void>>(`/users/${userId}/block`);
+    const response = await apiClient.post<ApiResponse<void>>(`/messaging/users/${userId}/block`);
     return handleResponse(response);
   },
 
   registerDevice: async (data: { deviceName: string; identityPublicKey: string; registrationId: number; pushToken?: string }) => {
-    const response = await apiClient.post<ApiResponse<unknown>>('/devices', data);
+    const response = await apiClient.post<ApiResponse<unknown>>('/messaging/devices', data);
     return handleResponse(response);
   },
 
   getPreKeyBundle: async (userId: string) => {
-    const response = await apiClient.get<ApiResponse<unknown>>(`/devices/${userId}/prekey-bundle`);
+    const response = await apiClient.get<ApiResponse<unknown>>(`/messaging/devices/${userId}/prekey-bundle`);
     return handleResponse(response);
   },
 };

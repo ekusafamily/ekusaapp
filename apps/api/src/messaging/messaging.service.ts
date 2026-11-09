@@ -265,35 +265,38 @@ export class MessagingService {
       });
     }
 
-    // Determine recipients
-    const recipientMembers = conversation.members.filter((m: any) => m.userId !== userId);
-    if (recipientMembers.length === 0) throw new BadRequestException('No recipients');
-
-    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const dedupeKey = `${data.conversationId}_${userId}_${messageId}`;
-
-    // Create message record
+    // Create message record first to get a stable cuid() ID
     const message = await this.prisma.message.create({
       data: {
         conversationId: data.conversationId,
         senderId: userId,
         senderDeviceId: device.id,
         ciphertext: data.ciphertext,
-        protocolMetadata: data.protocolMetadata,
+        protocolMetadata: data.protocolMetadata || '',
         messageType: (data.messageType as any) || 'text',
         status: 'pending',
       },
     });
 
-    // Create queue entries for each recipient
+    // Use the message's DB id as the stable messageId for queue/notifications
+    const messageId = message.id;
+
+    // Determine recipients (all members except sender)
+    const recipientMembers = conversation.members.filter((m: any) => m.userId !== userId);
+
+    // Create queue entries for each recipient (skip on duplicate to handle retries)
     for (const recipient of recipientMembers) {
       const recipientDevice = await this.prisma.device.findFirst({
         where: { userId: recipient.userId, deviceStatus: 'active' },
       });
 
-      await this.prisma.messageQueue.create({
-        data: {
-          dedupeKey: `${dedupeKey}_${recipient.userId}`,
+      const dedupeKey = `${data.conversationId}_${userId}_${messageId}_${recipient.userId}`;
+
+      await this.prisma.messageQueue.upsert({
+        where: { dedupeKey },
+        update: {},
+        create: {
+          dedupeKey,
           conversationId: data.conversationId,
           senderUserId: userId,
           senderDeviceId: device.id,
@@ -301,7 +304,7 @@ export class MessagingService {
           recipientDeviceId: recipientDevice?.id,
           messageId,
           ciphertext: data.ciphertext,
-          protocolMetadata: data.protocolMetadata,
+          protocolMetadata: data.protocolMetadata || '',
         },
       });
     }
@@ -314,14 +317,18 @@ export class MessagingService {
 
     // Send push notifications to recipients
     for (const recipient of recipientMembers) {
-      await this.notificationsService.create({
-        userId: recipient.userId,
-        category: 'message',
-        priority: 'high',
-        title: 'New Message',
-        body: 'You have a new message',
-        data: { conversationId: data.conversationId, messageId },
-      });
+      try {
+        await this.notificationsService.create({
+          userId: recipient.userId,
+          category: 'message',
+          priority: 'high',
+          title: 'New Message',
+          body: 'You have a new message',
+          data: { conversationId: data.conversationId, messageId },
+        });
+      } catch {
+        // Notification failure should not block message delivery
+      }
     }
 
     return { messageId, message };

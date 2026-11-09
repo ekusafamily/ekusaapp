@@ -13,10 +13,90 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsOptional, IsArray, IsNumber, IsBoolean } from 'class-validator';
 import { MessagingService } from './messaging.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { deviceRegistrationSchema } from '@ekusa/validation';
+
+export class CreateConversationDto {
+  @ApiPropertyOptional({ description: 'Target user ID for direct 1-on-1 conversation' })
+  @IsOptional()
+  @IsString()
+  recipientId?: string;
+
+  @ApiPropertyOptional({ description: 'Group conversation name' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiPropertyOptional({ description: 'Group conversation description' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ description: 'Member user IDs for group conversation', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  memberIds?: string[];
+}
+
+export class SendMessageDto {
+  @ApiProperty({ description: 'Conversation ID' })
+  @IsString()
+  conversationId: string;
+
+  @ApiProperty({ description: 'Encrypted message ciphertext' })
+  @IsString()
+  ciphertext: string;
+
+  @ApiPropertyOptional({ description: 'Signal protocol metadata' })
+  @IsOptional()
+  @IsString()
+  protocolMetadata?: string;
+
+  @ApiPropertyOptional({ description: 'Message type (e.g. text, image)' })
+  @IsOptional()
+  @IsString()
+  messageType?: string;
+}
+
+export class AcknowledgeMessageDto {
+  @ApiProperty()
+  @IsString()
+  messageId: string;
+
+  @ApiProperty()
+  @IsString()
+  conversationId: string;
+}
+
+export class DeleteMessageDto {
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  deleteForEveryone?: boolean;
+}
+
+export class RegisterDeviceDto {
+  @ApiProperty()
+  @IsString()
+  deviceName: string;
+
+  @ApiProperty()
+  @IsString()
+  identityPublicKey: string;
+
+  @ApiProperty()
+  @IsNumber()
+  registrationId: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  pushToken?: string;
+}
 
 @ApiTags('Messaging')
 @Controller(['messaging', ''])
@@ -35,12 +115,7 @@ export class MessagingController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Create conversation' })
-  async createConversation(@Request() req: any, @Body() data: {
-    recipientId?: string;
-    name?: string;
-    description?: string;
-    memberIds?: string[];
-  }) {
+  async createConversation(@Request() req: any, @Body() data: CreateConversationDto) {
     return this.messagingService.createConversation(req.user.sub, data);
   }
 
@@ -56,13 +131,11 @@ export class MessagingController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Send encrypted message' })
-  async sendMessage(@Request() req: any, @Body() data: {
-    conversationId: string;
-    ciphertext: string;
-    protocolMetadata: string;
-    messageType?: string;
-  }) {
-    return this.messagingService.sendMessage(req.user.sub, data);
+  async sendMessage(@Request() req: any, @Body() data: SendMessageDto) {
+    return this.messagingService.sendMessage(req.user.sub, {
+      ...data,
+      protocolMetadata: data.protocolMetadata || '',
+    });
   }
 
   @Get('messages/pending')
@@ -77,7 +150,7 @@ export class MessagingController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Acknowledge message delivery' })
-  async acknowledgeMessage(@Request() req: any, @Body() data: { messageId: string; conversationId: string }) {
+  async acknowledgeMessage(@Request() req: any, @Body() data: AcknowledgeMessageDto) {
     return this.messagingService.acknowledgeMessage(req.user.sub, data);
   }
 
@@ -85,7 +158,7 @@ export class MessagingController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Delete message' })
-  async deleteMessage(@Param('id') id: string, @Request() req: any, @Body() data: { deleteForEveryone?: boolean }) {
+  async deleteMessage(@Param('id') id: string, @Request() req: any, @Body() data: DeleteMessageDto) {
     return this.messagingService.deleteMessage(req.user.sub, id, data.deleteForEveryone || false);
   }
 
@@ -102,12 +175,7 @@ export class MessagingController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Register device for E2EE' })
-  async registerDevice(@Request() req: any, @Body() data: {
-    deviceName: string;
-    identityPublicKey: string;
-    registrationId: number;
-    pushToken?: string;
-  }) {
+  async registerDevice(@Request() req: any, @Body() data: RegisterDeviceDto) {
     return this.messagingService.registerDevice(req.user.sub, data);
   }
 

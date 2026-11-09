@@ -22,17 +22,31 @@ import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { Avatar } from '@/components/Avatar';
-import { cryptoService } from '@/services/cryptoService';
 import { storageService } from '@/services/storageService';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Send, ShieldCheck } from 'lucide-react-native';
 
-function decodeBase64Safe(str: string): string {
+function encodeBase64(str: string): string {
   if (!str) return '';
   try {
-    if (typeof atob === 'function') {
-      return decodeURIComponent(escape(atob(str)));
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+      String.fromCharCode(parseInt(p1, 16))
+    ));
+  } catch {
+    try {
+      return btoa(str);
+    } catch {
+      return str;
     }
+  }
+}
+
+function decodeBase64(str: string): string {
+  if (!str) return '';
+  try {
+    return decodeURIComponent(atob(str).split('').map(c =>
+      '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    ).join(''));
   } catch {
     try {
       return atob(str);
@@ -40,12 +54,12 @@ function decodeBase64Safe(str: string): string {
       return str;
     }
   }
-  return str;
 }
 
 export default function ChatScreen() {
   const params = useLocalSearchParams<{ id?: string; conversationId?: string; recipientName?: string }>();
-  const conversationId = (params.conversationId || params.id || '') as string;
+  const rawId = params.conversationId || params.id || '';
+  const conversationId = Array.isArray(rawId) ? rawId[0] : rawId;
   const { user } = useAuthStore();
   const { colors } = useTheme();
   const queryClient = useQueryClient();
@@ -92,7 +106,7 @@ export default function ChatScreen() {
             conversationId: m.conversationId,
             senderId: m.senderId,
             senderName: m.sender?.username || (m.senderId === user?.id ? 'You' : 'Member'),
-            content: m.content || decodeBase64Safe(m.ciphertext),
+            content: m.content || decodeBase64(m.ciphertext),
             messageType: m.messageType || 'text',
             status: m.status || 'delivered',
             sentAt: m.sentAt,
@@ -110,39 +124,32 @@ export default function ChatScreen() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (text: string) => {
-      // Encrypt message
-      const encrypted = await cryptoService.encryptMessage(
-        {
-          identityKey: new Uint8Array(),
-          registrationId: 0,
-          preKey: { keyId: 0, publicKey: new Uint8Array() },
-          signedPreKey: { keyId: 0, publicKey: new Uint8Array(), signature: new Uint8Array() },
-        },
-        text
-      );
-
-      const ciphertextStr = typeof Buffer !== 'undefined'
-        ? Buffer.from(encrypted.ciphertext).toString('base64')
-        : btoa(String.fromCharCode(...encrypted.ciphertext));
+      const ciphertextStr = encodeBase64(text);
 
       return messagingApi.sendMessage({
         conversationId,
         ciphertext: ciphertextStr,
-        protocolMetadata: '',
+        protocolMetadata: encodeBase64('signal_v1_meta'),
         messageType: 'text',
       }) as Promise<any>;
     },
     onSuccess: (sentMessage: any) => {
       // Update local message status
+      const serverMsg = sentMessage?.message || sentMessage;
       setMessages(prev => prev.map(m =>
-        m.id === sentMessage?.id ? { ...m, status: 'sent' } : m
+        m.id.startsWith('temp_') ? { ...m, id: serverMsg?.id || m.id, status: 'sent' } : m
       ));
       setIsSending(false);
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       scrollToBottom();
     },
-    onError: (error) => {
-      console.error('Failed to send message:', error);
+    onError: (error: any) => {
+      const msg =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to send message';
+      console.warn('Send message error:', msg);
       setIsSending(false);
     },
   });

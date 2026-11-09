@@ -100,8 +100,13 @@ export default function ChatsScreen() {
         });
       }
     } catch (err: any) {
-      console.error('Failed to start chat session:', err);
-      setSearchError(err.message || 'Failed to start conversation. Please try again.');
+      const errorMsg =
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        'Failed to start conversation. Please try again.';
+      console.warn('Failed to start chat session:', errorMsg);
+      setSearchError(errorMsg);
       setIsStartingChat(null);
     }
   };
