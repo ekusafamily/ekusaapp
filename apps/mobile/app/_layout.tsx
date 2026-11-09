@@ -21,6 +21,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="chats/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="announcements" options={{ headerShown: false }} />
       </Stack>
     </Providers>

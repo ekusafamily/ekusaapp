@@ -39,7 +39,6 @@ export default function HomeScreen() {
   const quickActions = [
     { label: 'Announcements', icon: 'megaphone', route: '/announcements' },
     { label: 'Events', icon: 'calendar', route: '/(tabs)/events' },
-    // { label: 'Community', icon: 'users', route: '/(tabs)/community' },
     { label: user?.accountStatus !== 'verified_member' ? 'Apply Membership' : 'My Membership', icon: 'badge', route: user?.accountStatus !== 'verified_member' ? '/(auth)/membership-apply' : '/(tabs)/profile' },
     { label: 'Welfare Support', icon: 'mail', route: '/welfare' },
   ];

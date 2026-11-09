@@ -1,10 +1,10 @@
 /**
  * EKUSA Mobile App - Main Tab Layout
- * 5-tab bottom navigation: Home, Chats, Community, Events, Profile
+ * 4-tab bottom navigation: Home, Chats, Events, Profile
  */
 
 import { Tabs } from 'expo-router';
-import { Home, MessageCircle, Users, Calendar, User } from 'lucide-react-native';
+import { Home, MessageCircle, Calendar, User } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors } from '@/constants/Colors';
@@ -52,20 +52,7 @@ export default function TabLayout() {
           tabBarBadge: user ? undefined : '!',
         }}
       />
-      {/* Community button removed from tab bar */}
-      <Tabs.Screen
-        name="community"
-        options={{
-          href: null,
-        }}
-      />
-      {/* chats/[id] screen removed from tab bar */}
-      <Tabs.Screen
-        name="chats/[id]"
-        options={{
-          href: null,
-        }}
-      />
+      {/* 4 main tabs: Home, Chats, Events, Profile */}
       <Tabs.Screen
         name="events"
         options={{

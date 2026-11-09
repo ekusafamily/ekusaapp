@@ -133,6 +133,10 @@ export class MessagingService {
 
   async createConversation(userId: string, data: { recipientId?: string; name?: string; description?: string; memberIds?: string[] }) {
     if (data.recipientId) {
+      if (data.recipientId === userId) {
+        throw new BadRequestException('Cannot start a direct conversation with yourself');
+      }
+
       // Direct conversation - check if already exists
       const existing = await this.prisma.directConversationPair.findUnique({
         where: {

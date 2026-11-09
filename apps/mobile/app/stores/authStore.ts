@@ -85,8 +85,19 @@ export const useAuthStore = create<AuthState>()(
             set({ user: current as User, isLoading: false, error: null });
           }
         } catch (error: any) {
-          set({ isLoading: false, error: error.message || 'Login failed' });
-          throw error;
+          const is401 =
+            error?.response?.status === 401 ||
+            error?.status === 401 ||
+            error?.response?.data?.statusCode === 401 ||
+            error?.message?.includes('401');
+          const errorMessage = is401
+            ? 'Wrong password or username. Please check your credentials and try again.'
+            : error?.response?.data?.message ||
+              error?.response?.data?.error?.message ||
+              error?.message ||
+              'Login failed. Please try again.';
+          set({ isLoading: false, error: errorMessage });
+          throw new Error(errorMessage);
         }
       },
 

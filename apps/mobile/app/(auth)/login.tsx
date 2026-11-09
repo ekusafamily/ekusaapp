@@ -22,7 +22,17 @@ export default function LoginScreen() {
       await login(identifier, password);
       router.replace('/(tabs)');
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
+      if (
+        err?.response?.status === 401 ||
+        err?.status === 401 ||
+        err?.response?.data?.statusCode === 401 ||
+        err?.message?.includes('401') ||
+        err?.message?.includes('Invalid credentials')
+      ) {
+        setError('Wrong password or username. Please check your credentials and try again.');
+      } else {
+        setError(err.message || 'Login failed. Please try again.');
+      }
     }
   };
 

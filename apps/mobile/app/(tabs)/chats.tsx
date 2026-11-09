@@ -91,11 +91,11 @@ export default function ChatsScreen() {
       setUserSearchQuery('');
       setIsStartingChat(null);
 
-      // Navigate into the active conversation
+      // Navigate to the conversation screen
       const conversationId = conv?.id || conv?.data?.id;
       if (conversationId) {
         router.push({
-          pathname: '/(tabs)/chats/[id]',
+          pathname: '/chats/[id]',
           params: { id: conversationId, conversationId },
         });
       }
@@ -320,7 +320,10 @@ function ConversationItem({ conversation, colorScheme }: { conversation: any; co
   const unreadCount = conversation.unreadCount || 0;
 
   const handlePress = () => {
-    router.push({ pathname: '/(tabs)/chats/[id]', params: { id: conversation.id } });
+    router.push({
+      pathname: '/chats/[id]',
+      params: { id: conversation.id, conversationId: conversation.id },
+    });
   };
 
   return (
