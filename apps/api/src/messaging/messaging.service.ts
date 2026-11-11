@@ -241,9 +241,25 @@ export class MessagingService {
     protocolMetadata: string;
     messageType?: string;
   }) {
+    // 1. Single query: Fetch conversation, active members, and their active devices
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: data.conversationId },
-      include: { members: { where: { leftAt: null } } },
+      include: {
+        members: {
+          where: { leftAt: null },
+          include: {
+            user: {
+              select: {
+                id: true,
+                devices: {
+                  where: { deviceStatus: 'active' },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!conversation) throw new NotFoundException('Conversation not found');
@@ -252,13 +268,10 @@ export class MessagingService {
     const membership = conversation.members.find((m: any) => m.userId === userId);
     if (!membership) throw new ForbiddenException('Not a member of this conversation');
 
-    // Get sender's device, or auto-create one if none exists
-    let device = await this.prisma.device.findFirst({
-      where: { userId, deviceStatus: 'active' },
-    });
-
-    if (!device) {
-      device = await this.prisma.device.create({
+    // Sender's active device (or auto-create one if none exists)
+    let senderDeviceId = membership.user?.devices?.[0]?.id;
+    if (!senderDeviceId) {
+      const newDevice = await this.prisma.device.create({
         data: {
           userId,
           deviceName: 'Primary Device',
@@ -267,72 +280,74 @@ export class MessagingService {
           deviceStatus: 'active',
         },
       });
+      senderDeviceId = newDevice.id;
     }
 
-    // Create message record first to get a stable cuid() ID
-    const message = await this.prisma.message.create({
-      data: {
-        conversationId: data.conversationId,
-        senderId: userId,
-        senderDeviceId: device.id,
-        ciphertext: data.ciphertext,
-        protocolMetadata: data.protocolMetadata || '',
-        messageType: (data.messageType as any) || 'text',
-        status: 'pending',
-      },
-    });
-
-    // Use the message's DB id as the stable messageId for queue/notifications
-    const messageId = message.id;
-
-    // Determine recipients (all members except sender)
-    const recipientMembers = conversation.members.filter((m: any) => m.userId !== userId);
-
-    // Create queue entries for each recipient (skip on duplicate to handle retries)
-    for (const recipient of recipientMembers) {
-      const recipientDevice = await this.prisma.device.findFirst({
-        where: { userId: recipient.userId, deviceStatus: 'active' },
-      });
-
-      const dedupeKey = `${data.conversationId}_${userId}_${messageId}_${recipient.userId}`;
-
-      await this.prisma.messageQueue.upsert({
-        where: { dedupeKey },
-        update: {},
-        create: {
-          dedupeKey,
+    // 2. Insert message & update conversation timestamp in parallel
+    const [message] = await Promise.all([
+      this.prisma.message.create({
+        data: {
           conversationId: data.conversationId,
-          senderUserId: userId,
-          senderDeviceId: device.id,
-          recipientUserId: recipient.userId,
-          recipientDeviceId: recipientDevice?.id,
-          messageId,
+          senderId: userId,
+          senderDeviceId,
           ciphertext: data.ciphertext,
           protocolMetadata: data.protocolMetadata || '',
+          messageType: (data.messageType as any) || 'text',
+          status: 'pending',
         },
+      }),
+      this.prisma.conversation.update({
+        where: { id: data.conversationId },
+        data: { updatedAt: new Date() },
+      }),
+    ]);
+
+    const messageId = message.id;
+    const recipientMembers = conversation.members.filter((m: any) => m.userId !== userId);
+
+    // 3. Process recipient queues and push notifications asynchronously
+    // Returning immediately ensures fast response times without waiting on external notifications
+    if (recipientMembers.length > 0) {
+      setImmediate(async () => {
+        try {
+          const queueEntries = recipientMembers.map((recipient: any) => {
+            const recipientDeviceId = recipient.user?.devices?.[0]?.id || null;
+            const dedupeKey = `${data.conversationId}_${userId}_${messageId}_${recipient.userId}`;
+            return {
+              dedupeKey,
+              conversationId: data.conversationId,
+              senderUserId: userId,
+              senderDeviceId,
+              recipientUserId: recipient.userId,
+              recipientDeviceId,
+              messageId,
+              ciphertext: data.ciphertext,
+              protocolMetadata: data.protocolMetadata || '',
+            };
+          });
+
+          await this.prisma.messageQueue.createMany({
+            data: queueEntries,
+            skipDuplicates: true,
+          });
+
+          // Send push notifications in parallel
+          await Promise.allSettled(
+            recipientMembers.map((recipient: any) =>
+              this.notificationsService.create({
+                userId: recipient.userId,
+                category: 'message',
+                priority: 'high',
+                title: 'New Message',
+                body: 'You have a new message',
+                data: { conversationId: data.conversationId, messageId },
+              })
+            )
+          );
+        } catch (err) {
+          console.error('Background message delivery error:', err);
+        }
       });
-    }
-
-    // Update conversation timestamp
-    await this.prisma.conversation.update({
-      where: { id: data.conversationId },
-      data: { updatedAt: new Date() },
-    });
-
-    // Send push notifications to recipients
-    for (const recipient of recipientMembers) {
-      try {
-        await this.notificationsService.create({
-          userId: recipient.userId,
-          category: 'message',
-          priority: 'high',
-          title: 'New Message',
-          body: 'You have a new message',
-          data: { conversationId: data.conversationId, messageId },
-        });
-      } catch {
-        // Notification failure should not block message delivery
-      }
     }
 
     return { messageId, message };

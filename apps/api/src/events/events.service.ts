@@ -218,6 +218,7 @@ export class EventsService {
     capacity?: number;
     eligibility?: string;
     registrationFee: number;
+    status?: string;
   }, adminUserId: string) {
     if (data.endAt <= data.startAt) {
       throw new BadRequestException('End time must be after start time');
@@ -238,7 +239,7 @@ export class EventsService {
         capacity: data.capacity,
         eligibility: data.eligibility,
         registrationFee: data.registrationFee,
-        status: 'draft',
+        status: (data.status as any) || 'draft',
         createdBy: adminUserId,
       },
     });

@@ -1,19 +1,20 @@
 /**
  * EKUSA Digital Platform - JWT Strategy
- * Validates access tokens
+ * Validates access tokens and decodes JWT payload into request.user.
+ * User validation is deferred to a dedicated endpoint (e.g. /auth/me) or
+ * resolved lazily only when the actual user record is needed.
+ * Role checks are handled by RolesGuard separately.
  */
 
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { AuthService } from '../auth.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
     private readonly configService: ConfigService,
-    private readonly authService: AuthService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -23,10 +24,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: { sub: string; username: string; accountStatus: string }) {
-    const user = await this.authService.validateUser(payload.sub);
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-    return { ...user, sub: user.id };
+    // Return the decoded JWT payload directly - no DB query.
+    // The payload (sub, username, accountStatus) is trusted because it was
+    // signed by our server. Downstream code can access user.id via request.user.sub
+    return { id: payload.sub, username: payload.username, accountStatus: payload.accountStatus, sub: payload.sub };
   }
 }

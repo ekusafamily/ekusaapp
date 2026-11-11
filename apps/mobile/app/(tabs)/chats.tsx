@@ -22,13 +22,17 @@ import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { Avatar } from '@/components/Avatar';
+import { storageService } from '@/services/storageService';
 import { router } from 'expo-router';
 import { Plus, Search, X, MessageSquare } from 'lucide-react-native';
+
+const CONVERSATION_POLL_INTERVAL = 15000; // Poll for conversations every 15 seconds
 
 export default function ChatsScreen() {
   const { user } = useAuthStore();
   const { colors, colorScheme } = useTheme();
   const queryClient = useQueryClient();
+  const [localConversations, setLocalConversations] = useState<any[]>([]);
 
   const { data: conversations, isLoading, refetch } = useQuery({
     queryKey: ['conversations'],
@@ -36,6 +40,37 @@ export default function ChatsScreen() {
     enabled: !!user,
     staleTime: 30 * 1000,
   });
+
+  // Load local conversations on mount
+  useEffect(() => {
+    if (!user) return;
+    loadLocalConversations();
+
+    // Poll for conversation updates
+    const interval = setInterval(() => {
+      refetch();
+    }, CONVERSATION_POLL_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Save server conversations to local storage when they load
+  useEffect(() => {
+    if (!conversations) return;
+    const serverList: any[] = Array.isArray(conversations) ? conversations : ((conversations as any)?.items || []);
+    if (serverList.length > 0) {
+      serverList.forEach(conv => storageService.saveConversation(conv));
+    }
+  }, [conversations]);
+
+  const loadLocalConversations = async () => {
+    try {
+      const conversations = await storageService.getConversationList();
+      setLocalConversations(conversations);
+    } catch (error) {
+      console.error('Failed to load local conversations:', error);
+    }
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -84,6 +119,12 @@ export default function ChatsScreen() {
         recipientId: selectedUser.id,
       });
 
+      // Save new conversation to local storage
+      if (conv?.id || conv?.data?.id) {
+        const conversation = conv?.id ? conv : conv?.data;
+        await storageService.saveConversation(conversation);
+      }
+
       // Refresh conversations list cache
       await queryClient.invalidateQueries({ queryKey: ['conversations'] });
 
@@ -111,17 +152,45 @@ export default function ChatsScreen() {
     }
   };
 
+  // Merge server and local conversations
+  const mergedConversations = useMemo(() => {
+    const serverList: any[] = Array.isArray(conversations) ? conversations : ((conversations as any)?.items || []);
+    const localList = localConversations;
+
+    // Create a map of server conversations by ID
+    const serverMap = new Map(serverList.map(c => [c.id, c]));
+
+    // Merge: start with local, update with server data
+    const merged = [...localList];
+    for (const serverConv of serverList) {
+      const existingIndex = merged.findIndex(c => c.id === serverConv.id);
+      if (existingIndex >= 0) {
+        merged[existingIndex] = { ...merged[existingIndex], ...serverConv };
+      } else {
+        merged.push(serverConv);
+      }
+    }
+
+    // Sort by last message time (most recent first)
+    merged.sort((a, b) => {
+      const aTime = a.lastMessage?.sentAt ? new Date(a.lastMessage.sentAt).getTime() : 0;
+      const bTime = b.lastMessage?.sentAt ? new Date(b.lastMessage.sentAt).getTime() : 0;
+      return bTime - aTime;
+    });
+
+    return merged;
+  }, [conversations, localConversations]);
+
   // Filter conversations by search query
   const filteredConversations = useMemo(() => {
-    const list: any[] = Array.isArray(conversations) ? conversations : ((conversations as any)?.items || []);
-    if (!searchQuery.trim()) return list;
+    if (!searchQuery.trim()) return mergedConversations;
     const query = searchQuery.toLowerCase();
-    return list.filter((conv: any) =>
+    return mergedConversations.filter((conv: any) =>
       conv.otherUser?.displayName?.toLowerCase().includes(query) ||
       conv.otherUser?.username?.toLowerCase().includes(query) ||
       conv.lastMessage?.content?.toLowerCase().includes(query)
     );
-  }, [conversations, searchQuery]);
+  }, [mergedConversations, searchQuery]);
 
   if (!user) {
     return (

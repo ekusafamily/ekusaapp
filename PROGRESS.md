@@ -67,7 +67,7 @@ All environment variables in `.env` are now fully configured:
 | `DIRECT_URL` | Set | Supabase session pooler port 5432 (used for migrations) |
 | `JWT_SECRET` | Set | UUID-based secret |
 | `JWT_ACCESS_EXPIRY` | `15m` | Ready |
-| `JWT_REFRESH_EXPIRY` | `7d` | Ready |
+| `JWT_REFRESH_EXPIRY` | `30d` | Ready |
 | `FCM_PROJECT_ID` | `studio-3365759448-2f271` | Ready |
 | `FIREBASE_SERVICE_ACCOUNT_PATH` | `./firebase-service-account.json` | Key file present locally (gitignored) |
 | `SMTP_HOST` | `smtp.resend.com` | Ready |

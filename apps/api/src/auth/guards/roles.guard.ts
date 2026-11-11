@@ -1,12 +1,37 @@
 /**
  * EKUSA Digital Platform - Roles Guard
- * Role-based access control for admin endpoints
+ * Role-based access control for admin endpoints.
+ * Uses a short-lived in-memory cache to avoid re-querying roles on every request.
  */
 
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
+
+interface CacheEntry {
+  roles: string[];
+  expiresAt: number;
+}
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+const roleCache = new Map<string, CacheEntry>();
+
+function getCachedRoles(userId: string): string[] | null {
+  const entry = roleCache.get(userId);
+  if (entry && Date.now() < entry.expiresAt) return entry.roles;
+  roleCache.delete(userId);
+  return null;
+}
+
+function setCachedRoles(userId: string, roles: string[]): void {
+  roleCache.set(userId, { roles, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
+export function invalidateRoleCache(userId: string): void {
+  roleCache.delete(userId);
+}
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -32,15 +57,20 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
-    // Get user roles
-    const userRoles = await this.prisma.userRole.findMany({
-      where: { userId },
-      include: { role: true },
-    });
+    const cachedRoles = getCachedRoles(userId);
+    let userRoleNames: string[];
 
-    const userRoleNames = userRoles.map((ur: any) => ur.role.name);
+    if (cachedRoles) {
+      userRoleNames = cachedRoles;
+    } else {
+      const userRoles = await this.prisma.userRole.findMany({
+        where: { userId },
+        include: { role: true },
+      });
+      userRoleNames = userRoles.map((ur: any) => ur.role.name);
+      setCachedRoles(userId, userRoleNames);
+    }
 
-    // Check if user has any of the required roles
     const hasRole = requiredRoles.some(role => userRoleNames.includes(role));
 
     if (!hasRole) {

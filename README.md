@@ -189,7 +189,7 @@ ekusa-platform/
 | **Settings** | Platform configuration |
 
 ### Backend API Modules
-- **Auth**: JWT (15min access + 7d refresh), Argon2id, rate limiting
+- **Auth**: JWT (15min access + 30d refresh), Argon2id, rate limiting
 - **Users**: Profiles, avatar upload, username search
 - **Membership**: Application workflow, verification, status sync
 - **Announcements**: Audience targeting, FCM push, read tracking

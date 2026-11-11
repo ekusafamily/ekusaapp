@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { invalidateRoleCache } from '../auth/guards/roles.guard';
 
 @Injectable()
 export class RolesService {
@@ -82,6 +83,8 @@ export class RolesService {
       include: { role: true },
     });
 
+    invalidateRoleCache(userId);
+
     await this.auditService.log({
       adminUserId,
       action: 'role_assigned',
@@ -103,6 +106,8 @@ export class RolesService {
     await this.prisma.userRole.delete({
       where: { userId_roleId: { userId, roleId } },
     });
+
+    invalidateRoleCache(userId);
 
     await this.auditService.log({
       adminUserId,

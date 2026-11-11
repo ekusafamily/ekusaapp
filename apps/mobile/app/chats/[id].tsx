@@ -26,6 +26,8 @@ import { storageService } from '@/services/storageService';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Send, ShieldCheck } from 'lucide-react-native';
 
+const POLL_INTERVAL = 8000; // Poll for new messages every 8 seconds
+
 function encodeBase64(str: string): string {
   if (!str) return '';
   try {
@@ -74,14 +76,25 @@ export default function ChatScreen() {
   useEffect(() => {
     if (!conversationId) return;
     loadMessages();
+
+    // Set up polling for new messages (real-time updates)
+    const interval = setInterval(() => {
+      if (!isSending) {
+        loadMessages(true); // true = skip local load, only fetch from server
+      }
+    }, POLL_INTERVAL);
+
+    return () => clearInterval(interval);
   }, [conversationId]);
 
-  const loadMessages = async () => {
+  const loadMessages = async (skipLocalLoad = false) => {
     try {
-      // 1. Load cached messages from local storage
-      const localMessages = await storageService.getMessages(conversationId);
-      if (localMessages && localMessages.length > 0) {
-        setMessages(localMessages);
+      // 1. Load cached messages from local storage (only on initial load)
+      if (!skipLocalLoad) {
+        const localMessages = await storageService.getMessages(conversationId);
+        if (localMessages && localMessages.length > 0) {
+          setMessages(localMessages);
+        }
       }
 
       // 2. Fetch latest conversation & messages from server
@@ -111,7 +124,33 @@ export default function ChatScreen() {
             status: m.status || 'delivered',
             sentAt: m.sentAt,
           }));
-          setMessages(parsed);
+
+          // Merge local and server messages, deduplicating by ID
+          setMessages(prevMessages => {
+            const merged = [...prevMessages];
+
+            // Add or update messages from server
+            for (const serverMsg of parsed) {
+              const existingIndex = merged.findIndex((m: any) => m.id === serverMsg.id);
+              if (existingIndex >= 0) {
+                // Update existing message with server data (status, etc.)
+                merged[existingIndex] = { ...merged[existingIndex], ...serverMsg };
+              } else {
+                // Add new message from server
+                merged.push(serverMsg);
+              }
+            }
+
+            // Sort by sentAt timestamp
+            merged.sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+
+            return merged;
+          });
+
+          // Save server messages to local storage for offline access
+          for (const msg of parsed) {
+            await storageService.saveMessage(msg);
+          }
         }
       }
       setIsLoading(false);
@@ -140,7 +179,7 @@ export default function ChatScreen() {
         m.id.startsWith('temp_') ? { ...m, id: serverMsg?.id || m.id, status: 'sent' } : m
       ));
       setIsSending(false);
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'], refetchType: 'none' });
       scrollToBottom();
     },
     onError: (error: any) => {
@@ -173,10 +212,10 @@ export default function ChatScreen() {
     };
 
     setMessages(prev => [...prev, tempMessage]);
-    await storageService.saveMessage(tempMessage);
     scrollToBottom();
+    storageService.saveMessage(tempMessage).catch(console.warn);
 
-    // Send to backend
+    // Send to backend immediately
     sendMessageMutation.mutate(text);
   };
 

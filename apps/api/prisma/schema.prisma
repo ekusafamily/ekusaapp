@@ -214,6 +214,7 @@ model User {
   leaders         Leader[]
   authSessions    AuthSession[]
 
+  @@index([accountStatus])
   @@map("users")
 }
 
@@ -229,6 +230,8 @@ model Profile {
 
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([displayName])
+  @@index([campus])
   @@map("profiles")
 }
 
@@ -249,6 +252,7 @@ model Membership {
   user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviewer            User?             @relation("MembershipReviews", fields: [reviewedBy], references: [id], onDelete: SetNull)
 
+  @@index([membershipStatus])
   @@map("memberships")
 }
 
@@ -340,6 +344,8 @@ model UserRole {
   assignedByUser User  @relation("AssignedRoles", fields: [assignedBy], references: [id], onDelete: Restrict)
 
   @@id([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
   @@map("user_roles")
 }
 
@@ -377,6 +383,8 @@ model Announcement {
   targets       AnnouncementTarget[]
   reads         AnnouncementRead[]
 
+  @@index([status, publishedAt])
+  @@index([publisherId])
   @@map("announcements")
 }
 
@@ -429,6 +437,9 @@ model Event {
   creator               User          @relation(fields: [createdBy], references: [id], onDelete: Restrict)
   registrations         EventRegistration[]
 
+  @@index([status, startAt])
+  @@index([category, status])
+  @@index([createdBy])
   @@map("events")
 }
 
@@ -444,6 +455,9 @@ model EventRegistration {
   user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
+  @@index([userId])
+  @@index([eventId])
+  @@index([eventId, registrationStatus])
   @@map("event_registrations")
 }
 
@@ -467,6 +481,9 @@ model WelfareRequest {
   assignedOfficer     User?           @relation("AssignedWelfare", fields: [assignedOfficerId], references: [id], onDelete: SetNull)
   updates             WelfareUpdate[]
 
+  @@index([status, createdAt])
+  @@index([userId])
+  @@index([assignedOfficerId])
   @@map("welfare_requests")
 }
 
@@ -480,6 +497,8 @@ model WelfareUpdate {
   request         WelfareRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
   author          User         @relation(fields: [authorId], references: [id], onDelete: Restrict)
 
+  @@index([requestId, createdAt])
+  @@index([authorId])
   @@map("welfare_updates")
 }
 
