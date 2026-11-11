@@ -310,47 +310,16 @@ export const welfareQuerySchema = z.object({
 // ============================================
 
 export const createConversationRequestSchema = z.object({
-  recipientId: uuidSchema, // for direct conversations
-  // For groups:
-  name: z.string().min(1).max(100).optional(),
-  description: z.string().max(500).optional(),
-  memberIds: z.array(uuidSchema).min(2).max(100).optional(),
-}).strict().refine(
-  (data) => !!data.recipientId || (!!data.name && !!data.memberIds && data.memberIds.length >= 2),
-  { message: 'Either recipientId (direct) or name + memberIds (group) required', path: ['recipientId'] }
-);
+  recipientId: uuidSchema,
+}).strict();
 
 export const sendMessageRequestSchema = z.object({
   conversationId: uuidSchema,
-  ciphertext: base64Schema,
-  protocolMetadata: base64Schema,
-  messageType: z.enum(['text', 'image', 'file', 'voice', 'system']).default('text'),
-}).strict();
-
-export const acknowledgeMessageRequestSchema = z.object({
-  messageId: uuidSchema,
-  conversationId: uuidSchema,
-}).strict();
-
-export const deleteMessageRequestSchema = z.object({
-  messageId: uuidSchema,
-  deleteForEveryone: z.boolean().default(false),
+  content: z.string().min(1).max(4000),
 }).strict();
 
 export const blockUserRequestSchema = z.object({
   userId: uuidSchema,
-}).strict();
-
-export const deviceRegistrationSchema = z.object({
-  deviceName: z.string().min(1).max(100),
-  identityPublicKey: base64Schema,
-  registrationId: z.number().int().positive(),
-  pushToken: z.string().optional(),
-}).strict();
-
-export const pendingMessagesQuerySchema = z.object({
-  limit: z.number().int().min(1).max(100).default(50),
-  beforeMessageId: uuidSchema.optional(),
 }).strict();
 
 // ============================================
@@ -531,11 +500,7 @@ export type WelfareQuery = z.infer<typeof welfareQuerySchema>;
 
 export type CreateConversationRequest = z.infer<typeof createConversationRequestSchema>;
 export type SendMessageRequest = z.infer<typeof sendMessageRequestSchema>;
-export type AcknowledgeMessageRequest = z.infer<typeof acknowledgeMessageRequestSchema>;
-export type DeleteMessageRequest = z.infer<typeof deleteMessageRequestSchema>;
 export type BlockUserRequest = z.infer<typeof blockUserRequestSchema>;
-export type DeviceRegistration = z.infer<typeof deviceRegistrationSchema>;
-export type PendingMessagesQuery = z.infer<typeof pendingMessagesQuerySchema>;
 
 export type CreateCommunityRequest = z.infer<typeof createCommunityRequestSchema>;
 export type UpdateCommunityRequest = z.infer<typeof updateCommunityRequestSchema>;

@@ -149,57 +149,8 @@ export class NotificationsService implements OnModuleInit {
   }
 
   private async sendPushNotification(userId: string, notification: any) {
-    // Get user's active devices with push tokens
-    const devices = await this.prisma.device.findMany({
-      where: { userId, deviceStatus: 'active', pushToken: { not: null } },
-      select: { pushToken: true },
-    });
-
-    if (devices.length === 0) {
-      this.logger.debug(`No active devices with push tokens for user ${userId}`);
-      return;
-    }
-
-    const pushTokens = devices.map((d: any) => d.pushToken!).filter(Boolean);
-
-    if (pushTokens.length === 0) return;
-    if (!this.firebaseApp) {
-      this.logger.warn(`Firebase Admin not initialized. Skipping FCM send to ${pushTokens.length} devices.`);
-      return;
-    }
-    try {
-      const stringData: Record<string, string> = {};
-      if (notification.data && typeof notification.data === 'object') {
-        for (const [key, val] of Object.entries(notification.data)) {
-          stringData[key] = typeof val === 'string' ? val : JSON.stringify(val);
-        }
-      }
-      stringData.notificationId = notification.id || '';
-      stringData.category = notification.category || 'default';
-
-      const response = await getMessaging(this.firebaseApp).sendEachForMulticast({
-        tokens: pushTokens,
-        notification: {
-          title: notification.title,
-          body: notification.body,
-        },
-        data: stringData,
-        android: {
-          priority: notification.priority === 'urgent' || notification.priority === 'high' ? 'high' : 'normal',
-          notification: {
-            channelId: notification.category || 'default',
-            sound: 'default',
-          },
-        },
-      });
-
-      this.logger.log(`FCM Multicast sent: ${response.successCount} succeeded, ${response.failureCount} failed`);
-    } catch (error) {
-      this.logger.error(`Error sending FCM push notification to user ${userId}`, error);
-    }
-
-
-
+    // Push notifications disabled - Device model removed in messaging simplification
+    this.logger.debug(`Push notification skipped for user ${userId}: no device tokens`);
   }
 
   async broadcastToAudience(data: {

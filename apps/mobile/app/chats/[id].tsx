@@ -1,6 +1,6 @@
 /**
  * EKUSA Mobile App - Chat Screen
- * Individual conversation view with E2EE messaging
+ * Simple messaging with sent/delivered/seen status and last seen
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -24,39 +24,9 @@ import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTok
 import { Avatar } from '@/components/Avatar';
 import { storageService } from '@/services/storageService';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Send, ShieldCheck } from 'lucide-react-native';
+import { ArrowLeft, Send, Check, CheckCheck } from 'lucide-react-native';
 
 const POLL_INTERVAL = 8000; // Poll for new messages every 8 seconds
-
-function encodeBase64(str: string): string {
-  if (!str) return '';
-  try {
-    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) =>
-      String.fromCharCode(parseInt(p1, 16))
-    ));
-  } catch {
-    try {
-      return btoa(str);
-    } catch {
-      return str;
-    }
-  }
-}
-
-function decodeBase64(str: string): string {
-  if (!str) return '';
-  try {
-    return decodeURIComponent(atob(str).split('').map(c =>
-      '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-    ).join(''));
-  } catch {
-    try {
-      return atob(str);
-    } catch {
-      return str;
-    }
-  }
-}
 
 export default function ChatScreen() {
   const params = useLocalSearchParams<{ id?: string; conversationId?: string; recipientName?: string }>();
@@ -77,10 +47,13 @@ export default function ChatScreen() {
     if (!conversationId) return;
     loadMessages();
 
-    // Set up polling for new messages (real-time updates)
+    // Announce presence for last seen tracking
+    messagingApi.updateLastSeen().catch(() => {});
+
+    // Poll for new messages
     const interval = setInterval(() => {
       if (!isSending) {
-        loadMessages(true); // true = skip local load, only fetch from server
+        loadMessages(true);
       }
     }, POLL_INTERVAL);
 
@@ -98,58 +71,53 @@ export default function ChatScreen() {
       }
 
       // 2. Fetch latest conversation & messages from server
-      const serverResponse: any = await messagingApi.getConversation(conversationId);
-      if (serverResponse) {
-        // Resolve other participant
-        const other = serverResponse.members?.find(
-          (m: any) => (m.userId && m.userId !== user?.id) || (m.user && m.user.id !== user?.id)
-        );
-        if (other?.user) {
-          setOtherUser({
-            id: other.user.id,
-            username: other.user.username,
-            displayName: other.user.profile?.displayName || other.user.username,
-            avatarUrl: other.user.profile?.avatarUrl,
-          });
+      const conversation: any = await messagingApi.getConversation(conversationId);
+      if (conversation) {
+        if (conversation.otherUser) {
+          setOtherUser(conversation.otherUser);
         }
 
-        if (serverResponse.messages && Array.isArray(serverResponse.messages)) {
-          const parsed = serverResponse.messages.map((m: any) => ({
+        if (Array.isArray(conversation.messages)) {
+          const parsed = conversation.messages.map((m: any) => ({
             id: m.id,
             conversationId: m.conversationId,
             senderId: m.senderId,
-            senderName: m.sender?.username || (m.senderId === user?.id ? 'You' : 'Member'),
-            content: m.content || decodeBase64(m.ciphertext),
-            messageType: m.messageType || 'text',
-            status: m.status || 'delivered',
+            content: m.content || '',
+            status: m.status || 'sent',
             sentAt: m.sentAt,
+            deliveredAt: m.deliveredAt,
+            seenAt: m.seenAt,
           }));
 
           // Merge local and server messages, deduplicating by ID
           setMessages(prevMessages => {
             const merged = [...prevMessages];
-
-            // Add or update messages from server
             for (const serverMsg of parsed) {
               const existingIndex = merged.findIndex((m: any) => m.id === serverMsg.id);
               if (existingIndex >= 0) {
-                // Update existing message with server data (status, etc.)
                 merged[existingIndex] = { ...merged[existingIndex], ...serverMsg };
               } else {
-                // Add new message from server
                 merged.push(serverMsg);
               }
             }
-
-            // Sort by sentAt timestamp
             merged.sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
-
             return merged;
           });
 
           // Save server messages to local storage for offline access
           for (const msg of parsed) {
             await storageService.saveMessage(msg);
+          }
+
+          // Mark incoming messages as delivered, and the conversation as seen
+          const incomingUnread = parsed.filter(
+            (m: any) => m.senderId !== user?.id && (m.status === 'sent' || m.status === 'delivered')
+          );
+          if (incomingUnread.length > 0) {
+            for (const m of incomingUnread.filter((x: any) => x.status === 'sent')) {
+              messagingApi.markDelivered(m.id).catch(() => {});
+            }
+            messagingApi.markSeen(conversationId).catch(() => {});
           }
         }
       }
@@ -163,20 +131,18 @@ export default function ChatScreen() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (text: string) => {
-      const ciphertextStr = encodeBase64(text);
-
-      return messagingApi.sendMessage({
-        conversationId,
-        ciphertext: ciphertextStr,
-        protocolMetadata: encodeBase64('signal_v1_meta'),
-        messageType: 'text',
-      }) as Promise<any>;
+      return messagingApi.sendMessage(conversationId, text) as Promise<any>;
     },
-    onSuccess: (sentMessage: any) => {
-      // Update local message status
-      const serverMsg = sentMessage?.message || sentMessage;
+    onSuccess: (serverMsg: any) => {
       setMessages(prev => prev.map(m =>
-        m.id.startsWith('temp_') ? { ...m, id: serverMsg?.id || m.id, status: 'sent' } : m
+        m.id.startsWith('temp_')
+          ? {
+              ...m,
+              id: serverMsg?.id || m.id,
+              status: serverMsg?.status || 'sent',
+              sentAt: serverMsg?.sentAt || m.sentAt,
+            }
+          : m
       ));
       setIsSending(false);
       queryClient.invalidateQueries({ queryKey: ['conversations'], refetchType: 'none' });
@@ -189,6 +155,9 @@ export default function ChatScreen() {
         error?.message ||
         'Failed to send message';
       console.warn('Send message error:', msg);
+      setMessages(prev => prev.map(m =>
+        m.id.startsWith('temp_') ? { ...m, status: 'failed' } : m
+      ));
       setIsSending(false);
     },
   });
@@ -206,8 +175,7 @@ export default function ChatScreen() {
       conversationId,
       senderId: user?.id,
       content: text,
-      messageType: 'text',
-      status: 'pending' as const,
+      status: 'pending',
       sentAt: new Date().toISOString(),
     };
 
@@ -215,7 +183,9 @@ export default function ChatScreen() {
     scrollToBottom();
     storageService.saveMessage(tempMessage).catch(console.warn);
 
-    // Send to backend immediately
+    // Persist last seen while active in chat
+    messagingApi.updateLastSeen().catch(() => {});
+
     sendMessageMutation.mutate(text);
   };
 
@@ -227,10 +197,6 @@ export default function ChatScreen() {
 
   const renderMessage = ({ item }: { item: any }) => {
     const isOwn = item.senderId === user?.id;
-    const statusColor = item.status === 'read' ? colors.success :
-                       item.status === 'delivered' ? colors.success :
-                       item.status === 'sent' ? colors.primary :
-                       item.status === 'pending' ? colors.warning : colors.error;
 
     return (
       <View style={[
@@ -239,8 +205,8 @@ export default function ChatScreen() {
       ]}>
         {!isOwn && (
           <Avatar
-            source={item.senderAvatar ? { uri: item.senderAvatar } : undefined}
-            name={item.senderName || otherUser?.displayName || otherUser?.username}
+            source={otherUser?.avatarUrl ? { uri: otherUser.avatarUrl } : undefined}
+            name={otherUser?.displayName || otherUser?.username}
             size="small"
             style={styles.messageAvatar}
           />
@@ -259,14 +225,7 @@ export default function ChatScreen() {
             <Text style={[styles.messageTime, { color: isOwn ? 'rgba(255,255,255,0.7)' : colors.textTertiary }]}>
               {formatTime(item.sentAt)}
             </Text>
-            {isOwn && (
-              <View style={styles.statusContainer}>
-                <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                <Text style={[styles.statusText, { color: statusColor }]}>
-                  {item.status}
-                </Text>
-              </View>
-            )}
+            {isOwn && <MessageStatus status={item.status} failed={item.status === 'failed'} />}
           </View>
         </View>
       </View>
@@ -303,12 +262,9 @@ export default function ChatScreen() {
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
             {partnerTitle}
           </Text>
-          <View style={styles.encryptionBadge}>
-            <ShieldCheck size={12} color={colors.success} />
-            <Text style={[styles.encryptionText, { color: colors.textTertiary }]}>
-              End-to-end encrypted
-            </Text>
-          </View>
+          <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]} numberOfLines={1}>
+            {formatLastSeen(otherUser?.lastSeenAt)}
+          </Text>
         </View>
       </View>
 
@@ -330,10 +286,10 @@ export default function ChatScreen() {
           onLayout={scrollToBottom}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <ShieldCheck size={40} color={colors.primary} />
-              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Encrypted Session</Text>
+              <Send size={32} color={colors.primary} />
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Start the conversation</Text>
               <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-                Messages are private and end-to-end encrypted. Send a message to start chatting.
+                Messages stay available even when you are offline.
               </Text>
             </View>
           }
@@ -376,10 +332,45 @@ export default function ChatScreen() {
   );
 }
 
+function MessageStatus({ status, failed }: { status: string; failed: boolean }) {
+  const color = failed ? '#FF6B6B' : 'rgba(255,255,255,0.85)';
+
+  if (failed) {
+    return <Text style={[styles.statusLabel, { color }]}>Failed</Text>;
+  }
+  if (status === 'pending') {
+    return <Text style={[styles.statusLabel, { color }]}>Sending</Text>;
+  }
+  if (status === 'sent') {
+    return <Check size={14} color={color} />;
+  }
+  if (status === 'delivered') {
+    return <CheckCheck size={14} color={color} />;
+  }
+  if (status === 'seen') {
+    return <CheckCheck size={14} color="#7CF29B" />;
+  }
+  return null;
+}
+
 function formatTime(dateString: string): string {
   if (!dateString) return '';
   const date = new Date(dateString);
   return date.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatLastSeen(lastSeenAt?: string | null): string {
+  if (!lastSeenAt) return 'Offline';
+  const date = new Date(lastSeenAt);
+  const diffMs = Date.now() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffMins < 1) return 'Online now';
+  if (diffMins < 60) return `Last seen ${diffMins}m ago`;
+  if (diffHours < 24) return `Last seen ${diffHours}h ago`;
+  if (diffDays < 7) return `Last seen ${diffDays}d ago`;
+  return `Last seen ${date.toLocaleDateString('en-KE', { month: 'short', day: 'numeric' })}`;
 }
 
 const styles = StyleSheet.create({
@@ -405,14 +396,9 @@ const styles = StyleSheet.create({
     fontSize: Typography.sizes.md,
     fontWeight: Typography.weights.semibold,
   },
-  encryptionBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
-  },
-  encryptionText: {
+  headerSubtitle: {
     fontSize: Typography.sizes.xs,
+    marginTop: 2,
   },
   chatArea: {
     flex: 1,
@@ -481,25 +467,15 @@ const styles = StyleSheet.create({
   textOther: {},
   messageMeta: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     marginTop: Spacing.xs,
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
   messageTime: {
     fontSize: Typography.sizes.xs,
   },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
+  statusLabel: {
     fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.medium,
   },

@@ -182,7 +182,7 @@ class StorageService {
     const message = await this.get<Message>(key);
     if (message) {
       message.status = status;
-      if (status === 'read') message.readAt = new Date().toISOString() as unknown as Date;
+      if (status === 'seen') message.seenAt = new Date().toISOString() as unknown as Date;
       if (status === 'delivered') message.deliveredAt = new Date().toISOString() as unknown as Date;
       await this.saveMessage(message);
     }

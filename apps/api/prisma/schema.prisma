@@ -113,26 +113,16 @@ enum WelfareStatus {
   closed
 }
 
-enum ConversationType {
-  direct
-  group
-}
-
 enum MessageType {
   text
   image
   file
-  voice
-  system
-  deletion
 }
 
 enum MessageStatus {
-  pending
   sent
   delivered
-  read
-  failed
+  seen
 }
 
 enum CommunityType {
@@ -150,11 +140,6 @@ enum CommunityMemberRole {
   admin
 }
 
-enum DeviceStatus {
-  active
-  inactive
-  revoked
-}
 
 enum NotificationCategory {
   announcement
@@ -188,10 +173,10 @@ model User {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
+  lastSeenAt      DateTime?
   profile         Profile?
   membership      Membership?
   reviewedMemberships Membership[] @relation("MembershipReviews")
-  devices         Device[]
   conversations   ConversationMember[]
   sentMessages    Message[]         @relation("SentMessages")
   welfareRequests WelfareRequest[]  @relation("WelfareRequests")
@@ -209,8 +194,6 @@ model User {
   blockedByUsers  BlockedUser[]     @relation("BlockedUser")
   publishedAnnouncements Announcement[]
   announcementReads AnnouncementRead[]
-  directPairsUser1 DirectConversationPair[] @relation("DirectPairsUser1")
-  directPairsUser2 DirectConversationPair[] @relation("DirectPairsUser2")
   leaders         Leader[]
   authSessions    AuthSession[]
 
@@ -256,52 +239,6 @@ model Membership {
   @@map("memberships")
 }
 
-model Device {
-  id                  String        @id @default(cuid())
-  userId              String
-  deviceName          String
-  identityPublicKey   String        // base64 encoded
-  registrationId      Int           @unique
-  pushToken           String?
-  deviceStatus        DeviceStatus  @default(active)
-  createdAt           DateTime      @default(now())
-  lastSeenAt          DateTime      @default(now())
-
-  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  preKeys             PreKey[]
-  signedPreKeys       SignedPreKey[]
-  conversationMembers ConversationMember[]
-
-  @@unique([userId, registrationId])
-  @@map("devices")
-}
-
-model PreKey {
-  id          String   @id @default(cuid())
-  deviceId    String
-  keyId       Int
-  publicKey   String   // base64 encoded
-  createdAt   DateTime @default(now())
-
-  device      Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
-
-  @@unique([deviceId, keyId])
-  @@map("pre_keys")
-}
-
-model SignedPreKey {
-  id            String   @id @default(cuid())
-  deviceId      String
-  keyId         Int
-  publicKey     String   // base64 encoded
-  signature     String   // base64 encoded
-  createdAt     DateTime @default(now())
-
-  device        Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
-
-  @@unique([deviceId, keyId])
-  @@map("signed_pre_keys")
-}
 
 // ============================================
 // Permissions Tables
@@ -503,112 +440,48 @@ model WelfareUpdate {
 }
 
 // ============================================
-// Messaging Tables (E2EE - No plaintext!)
+// Messaging Tables
 // ============================================
 
 model Conversation {
-  id              String             @id @default(cuid())
-  type            ConversationType
-  name            String?            // for groups
-  description     String?            // for groups
-  avatarObjectKey String?            // for groups
-  createdBy       String?            // for groups
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   members         ConversationMember[]
   messages        Message[]
-  directPairs     DirectConversationPair[]
 
   @@map("conversations")
 }
 
 model ConversationMember {
-  id              String      @id @default(cuid())
+  id              String       @id @default(cuid())
   conversationId  String
   userId          String
-  deviceId        String?     // which device is participating
-  joinedAt        DateTime    @default(now())
-  leftAt          DateTime?
-  isAdmin         Boolean     @default(false)
+  joinedAt        DateTime     @default(now())
 
   conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  device          Device?      @relation(fields: [deviceId], references: [id], onDelete: SetNull)
 
-  @@unique([conversationId, userId, deviceId])
+  @@unique([conversationId, userId])
   @@map("conversation_members")
 }
 
-model DirectConversationPair {
-  id              String   @id @default(cuid())
-  user1Id         String
-  user2Id         String
-  conversationId  String   @unique
-
-  user1           User     @relation("DirectPairsUser1", fields: [user1Id], references: [id], onDelete: Cascade)
-  user2           User     @relation("DirectPairsUser2", fields: [user2Id], references: [id], onDelete: Cascade)
-  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  @@unique([user1Id, user2Id])
-  @@map("direct_conversation_pairs")
-}
-
 model Message {
-  id                    String      @id @default(cuid())
-  conversationId        String
-  senderId              String
-  senderDeviceId        String
-  recipientId           String?     // for direct conversations
-  recipientDeviceId     String?     // for direct conversations
-  ciphertext            String      // base64 encoded encrypted payload
-  protocolMetadata      String      // base64 encoded protocol metadata (Signal Protocol)
-  messageType           MessageType @default(text)
-  status                MessageStatus @default(pending)
-  sentAt                DateTime    @default(now())
-  deliveredAt           DateTime?
-  readAt                DateTime?
-  deletedAt             DateTime?
-  deleteForEveryone     Boolean     @default(false)
+  id              String        @id @default(cuid())
+  conversationId  String
+  senderId        String
+  content         String
+  status          MessageStatus @default(sent)
+  sentAt          DateTime      @default(now())
+  deliveredAt     DateTime?
+  seenAt          DateTime?
 
-  conversation          Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender                User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Restrict)
+  conversation    Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender          User          @relation("SentMessages", fields: [senderId], references: [id], onDelete: Restrict)
 
   @@index([conversationId, sentAt])
-  @@index([recipientId, status])
   @@map("messages")
-}
-
-model MessageQueue {
-  id                  String   @id @default(cuid())
-  dedupeKey           String   @unique
-  conversationId      String
-  senderUserId        String
-  senderDeviceId      String
-  recipientUserId     String
-  recipientDeviceId   String?
-  messageId           String   @unique
-  ciphertext          String
-  protocolMetadata    String
-  createdAt           DateTime @default(now())
-
-  @@index([recipientUserId, createdAt])
-  @@map("message_queue")
-}
-
-model DeliveryReceipt {
-  id                  String    @id @default(cuid())
-  messageId           String    @unique
-  conversationId      String
-  senderUserId        String
-  recipientUserId     String
-  recipientDeviceId   String
-  deliveredAt         DateTime  @default(now())
-  readAt              DateTime?
-  deletedAt           DateTime?
-
-  @@index([conversationId, recipientUserId])
-  @@map("delivery_receipts")
 }
 
 model BlockedUser {

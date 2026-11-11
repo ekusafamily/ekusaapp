@@ -317,21 +317,23 @@ export interface AddWelfareUpdateRequest {
 }
 
 // ============================================
-// Messaging Types (E2EE)
+// Messaging Types
 // ============================================
 
-export type ConversationType = 'direct' | 'group';
+export interface ConversationUser {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl?: string;
+  lastSeenAt?: string | null;
+}
 
 export interface Conversation {
   id: string;
-  type: ConversationType;
-  name?: string; // for groups
-  description?: string; // for groups
-  avatarUrl?: string;
-  createdBy?: string; // for groups
   createdAt: Date;
   updatedAt: Date;
-  lastMessage?: MessageSummary;
+  otherUser?: ConversationUser | null;
+  lastMessage?: MessageSummary | null;
   unreadCount: number;
 }
 
@@ -339,84 +341,26 @@ export interface MessageSummary {
   id: string;
   conversationId: string;
   senderId: string;
-  senderName: string;
-  content: string; // encrypted content preview or "[Encrypted message]"
-  messageType: MessageType;
+  content: string;
   status: MessageStatus;
   sentAt: Date;
 }
 
-export type MessageType = 'text' | 'image' | 'file' | 'voice' | 'system' | 'deletion';
-
-export type MessageStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
+export type MessageStatus = 'pending' | 'sent' | 'delivered' | 'seen' | 'failed';
 
 export interface Message {
   id: string;
   conversationId: string;
   senderId: string;
-  senderDeviceId: string;
-  recipientId: string; // for direct conversations
-  recipientDeviceId?: string;
-  ciphertext: string; // base64 encoded encrypted payload
-  protocolMetadata: string; // base64 encoded protocol metadata (Signal Protocol)
-  messageType: MessageType;
+  content: string;
   status: MessageStatus;
   sentAt: Date;
-  deliveredAt?: Date;
-  readAt?: Date;
-  deletedAt?: Date;
-  deleteForEveryone?: boolean;
-}
-
-export interface SendMessageRequest {
-  conversationId: string;
-  ciphertext: string;
-  protocolMetadata: string;
-  messageType: MessageType;
-}
-
-export interface PendingMessage {
-  messageId: string;
-  conversationId: string;
-  senderUserId: string;
-  senderDeviceId: string;
-  ciphertext: string;
-  protocolMetadata: string;
-  messageType: MessageType;
-  createdAt: Date;
-}
-
-export interface AcknowledgeMessageRequest {
-  messageId: string;
-  conversationId: string;
-}
-
-export interface DeleteMessageRequest {
-  messageId: string;
-  deleteForEveryone: boolean;
+  deliveredAt?: Date | null;
+  seenAt?: Date | null;
 }
 
 export interface BlockUserRequest {
   userId: string;
-}
-
-export interface DeviceRegistration {
-  id: string;
-  userId: string;
-  deviceName: string;
-  identityPublicKey: string; // base64
-  registrationId: number;
-  pushToken?: string;
-  deviceStatus: 'active' | 'inactive' | 'revoked';
-  createdAt: Date;
-  lastSeenAt: Date;
-}
-
-export interface PreKeyBundle {
-  identityKey: string; // base64
-  registrationId: number;
-  preKey: { keyId: number; publicKey: string };
-  signedPreKey: { keyId: number; publicKey: string; signature: string };
 }
 
 // ============================================

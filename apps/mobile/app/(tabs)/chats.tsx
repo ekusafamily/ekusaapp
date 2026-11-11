@@ -1,6 +1,6 @@
 /**
  * EKUSA Mobile App - Chats Screen
- * Conversation list for private messaging
+ * Conversation list with last seen and offline persistence
  */
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -16,7 +16,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { messagingApi, userApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
@@ -24,29 +24,32 @@ import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTok
 import { Avatar } from '@/components/Avatar';
 import { storageService } from '@/services/storageService';
 import { router } from 'expo-router';
-import { Plus, Search, X, MessageSquare } from 'lucide-react-native';
+import { Plus, Search, X, MessageSquare, CheckCheck } from 'lucide-react-native';
 
 const CONVERSATION_POLL_INTERVAL = 15000; // Poll for conversations every 15 seconds
 
 export default function ChatsScreen() {
   const { user } = useAuthStore();
-  const { colors, colorScheme } = useTheme();
-  const queryClient = useQueryClient();
+  const { colors } = useTheme();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [localConversations, setLocalConversations] = useState<any[]>([]);
 
   const { data: conversations, isLoading, refetch } = useQuery({
     queryKey: ['conversations'],
-    queryFn: () => messagingApi.listConversations(),
+    queryFn: () => messagingApi.listConversations() as Promise<any[]>,
     enabled: !!user,
     staleTime: 30 * 1000,
   });
 
-  // Load local conversations on mount
+  // Load locally cached conversations so the list works offline
   useEffect(() => {
     if (!user) return;
     loadLocalConversations();
 
-    // Poll for conversation updates
     const interval = setInterval(() => {
       refetch();
     }, CONVERSATION_POLL_INTERVAL);
@@ -54,468 +57,370 @@ export default function ChatsScreen() {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Save server conversations to local storage when they load
-  useEffect(() => {
-    if (!conversations) return;
-    const serverList: any[] = Array.isArray(conversations) ? conversations : ((conversations as any)?.items || []);
-    if (serverList.length > 0) {
-      serverList.forEach(conv => storageService.saveConversation(conv));
-    }
-  }, [conversations]);
-
   const loadLocalConversations = async () => {
     try {
-      const conversations = await storageService.getConversationList();
-      setLocalConversations(conversations);
+      const local = await storageService.getConversationList();
+      setLocalConversations(local || []);
     } catch (error) {
       console.error('Failed to load local conversations:', error);
     }
   };
 
-  const [searchQuery, setSearchQuery] = useState('');
+  // Cache server conversations locally and merge with the local list
+  useEffect(() => {
+    if (!conversations) return;
+    const serverList: any[] = Array.isArray(conversations) ? conversations : [];
 
-  // New Chat Modal States
-  const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
-  const [userSearchQuery, setUserSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isStartingChat, setIsStartingChat] = useState<string | null>(null);
-  const [searchError, setSearchError] = useState<string | null>(null);
+    (async () => {
+      for (const conv of serverList) {
+        await storageService.saveConversation(conv).catch(() => {});
+      }
 
-  const handleRefresh = async () => {
-    await refetch();
+      const local = await storageService.getConversationList();
+      const merged = mergeConversations(local || [], serverList);
+      setLocalConversations(merged);
+    })();
+  }, [conversations]);
+
+  const mergeConversations = (local: any[], server: any[]) => {
+    const byId = new Map<string, any>();
+    for (const conv of local) byId.set(conv.id, conv);
+    for (const conv of server) {
+      const existing = byId.get(conv.id);
+      byId.set(conv.id, existing ? { ...existing, ...conv } : conv);
+    }
+    return Array.from(byId.values()).sort(
+      (a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()
+    );
   };
 
-  // Perform user search when query changes or modal opens
-  useEffect(() => {
-    if (!isSearchModalVisible) return;
+  const displayList = useMemo(() => {
+    const source = (conversations && Array.isArray(conversations) && conversations.length > 0)
+      ? conversations
+      : localConversations;
+    if (!searchQuery.trim()) return source;
+    const q = searchQuery.toLowerCase();
+    return source.filter((conv: any) => {
+      const name = (conv.otherUser?.displayName || conv.otherUser?.username || '').toLowerCase();
+      const preview = (conv.lastMessage?.content || '').toLowerCase();
+      return name.includes(q) || preview.includes(q);
+    });
+  }, [conversations, localConversations, searchQuery]);
 
-    const timer = setTimeout(async () => {
-      setIsSearching(true);
-      setSearchError(null);
+  // User search for new chat
+  useEffect(() => {
+    if (!showNewChatModal || !userSearchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const timeout = setTimeout(async () => {
       try {
-        const response: any = await userApi.searchUsers(userSearchQuery.trim(), 20, 0);
-        const usersList: any[] = response?.items || response || [];
-        // Filter out current logged in user
-        const filtered = usersList.filter((u: any) => u.id !== user?.id);
-        setSearchResults(filtered);
-      } catch (err: any) {
-        console.error('Failed to search users:', err);
-        setSearchError(err.message || 'Unable to load members');
+        setIsSearching(true);
+        const results = await userApi.searchUsers(userSearchQuery.trim());
+        const items: any[] = Array.isArray(results) ? results : (results as any)?.items || [];
+        setSearchResults(items.filter((u: any) => u.id !== user?.id));
+      } catch (error) {
+        console.error('User search failed:', error);
       } finally {
         setIsSearching(false);
       }
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [userSearchQuery, isSearchModalVisible, user?.id]);
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [userSearchQuery, showNewChatModal]);
 
   const handleStartChat = async (selectedUser: any) => {
-    if (isStartingChat) return;
-    setIsStartingChat(selectedUser.id);
-    setSearchError(null);
     try {
-      const conv: any = await messagingApi.createConversation({
-        recipientId: selectedUser.id,
-      });
-
-      // Save new conversation to local storage
-      if (conv?.id || conv?.data?.id) {
-        const conversation = conv?.id ? conv : conv?.data;
-        await storageService.saveConversation(conversation);
-      }
-
-      // Refresh conversations list cache
-      await queryClient.invalidateQueries({ queryKey: ['conversations'] });
-
-      setIsSearchModalVisible(false);
+      const conversation: any = await messagingApi.createConversation(selectedUser.id);
+      setShowNewChatModal(false);
       setUserSearchQuery('');
-      setIsStartingChat(null);
-
-      // Navigate to the conversation screen
-      const conversationId = conv?.id || conv?.data?.id;
-      if (conversationId) {
-        router.push({
-          pathname: '/chats/[id]',
-          params: { id: conversationId, conversationId },
-        });
+      if (conversation?.id) {
+        router.push(`/chats/${conversation.id}?recipientName=${encodeURIComponent(
+          conversation.otherUser?.displayName || conversation.otherUser?.username || selectedUser.username || ''
+        )}`);
       }
-    } catch (err: any) {
-      const errorMsg =
-        err?.response?.data?.error?.message ||
-        err?.response?.data?.message ||
-        err?.message ||
-        'Failed to start conversation. Please try again.';
-      console.warn('Failed to start chat session:', errorMsg);
-      setSearchError(errorMsg);
-      setIsStartingChat(null);
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
     }
   };
 
-  // Merge server and local conversations
-  const mergedConversations = useMemo(() => {
-    const serverList: any[] = Array.isArray(conversations) ? conversations : ((conversations as any)?.items || []);
-    const localList = localConversations;
+  const renderConversation = ({ item }: { item: any }) => {
+    const other = item.otherUser || {};
+    const name = other.displayName || other.username || 'Member';
+    const lastMsg = item.lastMessage;
+    const isOwnLast = lastMsg?.senderId === user?.id;
+    const unread = item.unreadCount > 0;
+    const preview = lastMsg
+      ? `${isOwnLast ? 'You: ' : ''}${lastMsg.content}`
+      : 'No messages yet';
 
-    // Create a map of server conversations by ID
-    const serverMap = new Map(serverList.map(c => [c.id, c]));
-
-    // Merge: start with local, update with server data
-    const merged = [...localList];
-    for (const serverConv of serverList) {
-      const existingIndex = merged.findIndex(c => c.id === serverConv.id);
-      if (existingIndex >= 0) {
-        merged[existingIndex] = { ...merged[existingIndex], ...serverConv };
-      } else {
-        merged.push(serverConv);
-      }
-    }
-
-    // Sort by last message time (most recent first)
-    merged.sort((a, b) => {
-      const aTime = a.lastMessage?.sentAt ? new Date(a.lastMessage.sentAt).getTime() : 0;
-      const bTime = b.lastMessage?.sentAt ? new Date(b.lastMessage.sentAt).getTime() : 0;
-      return bTime - aTime;
-    });
-
-    return merged;
-  }, [conversations, localConversations]);
-
-  // Filter conversations by search query
-  const filteredConversations = useMemo(() => {
-    if (!searchQuery.trim()) return mergedConversations;
-    const query = searchQuery.toLowerCase();
-    return mergedConversations.filter((conv: any) =>
-      conv.otherUser?.displayName?.toLowerCase().includes(query) ||
-      conv.otherUser?.username?.toLowerCase().includes(query) ||
-      conv.lastMessage?.content?.toLowerCase().includes(query)
-    );
-  }, [mergedConversations, searchQuery]);
-
-  if (!user) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.authPrompt}>
-          <Text style={[styles.authPromptTitle, { color: colors.textPrimary }]}>Sign in to access messages</Text>
-          <Text style={[styles.authPromptText, { color: colors.textSecondary }]}>You need to be logged in to view and send messages.</Text>
-          <TouchableOpacity
-            style={[styles.authButton, { backgroundColor: colors.primary }]}
-            onPress={() => router.push('/(auth)/login')}
-          >
-            <Text style={[styles.authButtonText, { color: colors.onPrimary }]}>Sign In</Text>
-          </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.conversationItem, { borderBottomColor: colors.border }]}
+        onPress={() => router.push(`/chats/${item.id}?recipientName=${encodeURIComponent(name)}`)}
+        activeOpacity={0.7}
+      >
+        <Avatar
+          source={other.avatarUrl ? { uri: other.avatarUrl } : undefined}
+          name={name}
+          size="large"
+        />
+        <View style={styles.conversationContent}>
+          <View style={styles.conversationHeader}>
+            <Text style={[styles.conversationName, { color: colors.textPrimary }]} numberOfLines={1}>
+              {name}
+            </Text>
+            {lastMsg ? (
+              <Text style={[styles.conversationTime, { color: colors.textTertiary }]}>
+                {formatTime(lastMsg.sentAt)}
+              </Text>
+            ) : null}
+          </View>
+          <View style={styles.conversationPreviewRow}>
+            <Text
+              style={[
+                styles.conversationPreview,
+                { color: unread ? colors.textPrimary : colors.textTertiary },
+                unread && { fontWeight: Typography.weights.semibold },
+              ]}
+              numberOfLines={1}
+            >
+              {preview}
+            </Text>
+            {unread && (
+              <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
+                <Text style={styles.unreadBadgeText}>{item.unreadCount > 9 ? '9+' : item.unreadCount}</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.lastSeenRow}>
+            {isOwnLast && lastMsg?.status === 'seen' ? (
+              <CheckCheck size={13} color={colors.success} />
+            ) : null}
+            <Text style={[styles.lastSeenText, { color: colors.textTertiary }]} numberOfLines={1}>
+              {formatLastSeen(other.lastSeenAt)}
+            </Text>
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
-  }
+  };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Search Bar */}
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Chats</Text>
+        <TouchableOpacity
+          style={[styles.newChatButton, { backgroundColor: colors.primary }]}
+          onPress={() => setShowNewChatModal(true)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Plus size={20} color={colors.onPrimary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Search */}
       <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
+        <Search size={18} color={colors.textTertiary} />
         <TextInput
-          style={[
-            styles.searchInput,
-            { backgroundColor: colors.surfaceVariant, color: colors.textPrimary },
-          ]}
-          placeholder="Search conversations..."
+          style={[styles.searchInput, { color: colors.textPrimary }]}
+          placeholder="Search chats"
           placeholderTextColor={colors.textTertiary}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
       </View>
 
-      {/* Conversation List */}
+      {/* Conversation list */}
       <FlatList
-        data={filteredConversations}
-        keyExtractor={(item: any) => item.id}
-        renderItem={({ item }) => <ConversationItem conversation={item} colorScheme={colorScheme} />}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No conversations yet</Text>
-            <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
-              Tap the + button below to find members and start a chat session
-            </Text>
-          </View>
-        }
+        data={displayList}
+        keyExtractor={(item) => item.id}
+        renderItem={renderConversation}
         refreshControl={
-          <RefreshControl refreshing={isLoading} onRefresh={handleRefresh} colors={[colors.primary]} />
+          <RefreshControl refreshing={isLoading} onRefresh={() => refetch()} colors={[colors.primary]} tintColor={colors.primary} />
         }
-        contentContainerStyle={styles.listContent}
-      />
-
-      {/* Floating Action Button for New Chat */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.primary }]}
-        onPress={() => {
-          setIsSearchModalVisible(true);
-          setUserSearchQuery('');
-        }}
-        activeOpacity={0.85}
-        accessibilityLabel="Start new chat"
-        accessibilityRole="button"
-      >
-        <Plus size={26} color={colors.onPrimary} />
-      </TouchableOpacity>
-
-      {/* Search Users Modal */}
-      <Modal
-        visible={isSearchModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => {
-          if (!isStartingChat) setIsSearchModalVisible(false);
-        }}
-      >
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-          {/* Modal Header */}
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <View>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>New Chat</Text>
-              <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-                Select a member to start a chat session
+        ListEmptyComponent={
+          !isLoading ? (
+            <View style={styles.emptyContainer}>
+              <MessageSquare size={40} color={colors.textTertiary} />
+              <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No conversations yet</Text>
+              <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
+                Tap the + button to start chatting with a family member.
               </Text>
             </View>
+          ) : null
+        }
+      />
+
+      {/* New chat modal */}
+      <Modal
+        visible={showNewChatModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowNewChatModal(false)}
+      >
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>New chat</Text>
             <TouchableOpacity
-              style={[styles.modalCloseButton, { backgroundColor: colors.surfaceVariant }]}
-              onPress={() => setIsSearchModalVisible(false)}
-              disabled={!!isStartingChat}
+              onPress={() => { setShowNewChatModal(false); setUserSearchQuery(''); }}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <X size={20} color={colors.textPrimary} />
+              <X size={22} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
-
-          {/* User Search Input */}
-          <View style={[styles.modalSearchBox, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-            <View style={[styles.modalSearchInputContainer, { backgroundColor: colors.surfaceVariant }]}>
-              <Search size={18} color={colors.textTertiary} style={styles.searchIcon} />
-              <TextInput
-                style={[styles.modalSearchInput, { color: colors.textPrimary }]}
-                placeholder="Search by username or name..."
-                placeholderTextColor={colors.textTertiary}
-                value={userSearchQuery}
-                onChangeText={setUserSearchQuery}
-                autoFocus
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              {userSearchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setUserSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <X size={16} color={colors.textTertiary} />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-
-          {/* Search Error Notice */}
-          {searchError && (
-            <View style={[styles.errorBox, { backgroundColor: colors.errorContainer }]}>
-              <Text style={[styles.errorText, { color: colors.error }]}>{searchError}</Text>
-            </View>
-          )}
-
-          {/* Search Results List */}
-          {isSearching && searchResults.length === 0 ? (
-            <View style={styles.centerContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.centerText, { color: colors.textSecondary }]}>Searching members...</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={searchResults}
-              keyExtractor={(item: any) => item.id}
-              contentContainerStyle={styles.resultsListContent}
-              renderItem={({ item }) => {
-                const isSelected = isStartingChat === item.id;
-                return (
-                  <TouchableOpacity
-                    style={[styles.userItem, { backgroundColor: colors.surface }]}
-                    onPress={() => handleStartChat(item)}
-                    disabled={!!isStartingChat}
-                    activeOpacity={0.7}
-                  >
-                    <Avatar
-                      source={item.avatarUrl ? { uri: item.avatarUrl } : undefined}
-                      name={item.displayName || item.username}
-                      size="medium"
-                    />
-                    <View style={styles.userInfo}>
-                      <Text style={[styles.userDisplayName, { color: colors.textPrimary }]} numberOfLines={1}>
-                        {item.displayName || item.username}
-                      </Text>
-                      <Text style={[styles.userUsername, { color: colors.textSecondary }]} numberOfLines={1}>
-                        @{item.username}
-                        {item.campus ? ` • ${item.campus}` : ''}
-                      </Text>
-                    </View>
-                    <View style={styles.actionContainer}>
-                      {isSelected ? (
-                        <ActivityIndicator size="small" color={colors.primary} />
-                      ) : (
-                        <View style={[styles.chatActionButton, { backgroundColor: colors.surfaceVariant }]}>
-                          <MessageSquare size={16} color={colors.primary} />
-                          <Text style={[styles.chatActionText, { color: colors.primary }]}>Chat</Text>
-                        </View>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              }}
-              ListEmptyComponent={
-                !isSearching ? (
-                  <View style={styles.centerContainer}>
-                    <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No members found</Text>
-                    <Text style={[styles.centerText, { color: colors.textTertiary }]}>
-                      {userSearchQuery.trim()
-                        ? `No members matching "${userSearchQuery}"`
-                        : 'No other members registered yet'}
-                    </Text>
-                  </View>
-                ) : null
-              }
+          <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
+            <Search size={18} color={colors.textTertiary} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.textPrimary }]}
+              placeholder="Search by name or username"
+              placeholderTextColor={colors.textTertiary}
+              value={userSearchQuery}
+              onChangeText={setUserSearchQuery}
+              autoFocus
             />
-          )}
+            {isSearching && <ActivityIndicator size="small" color={colors.primary} />}
+          </View>
+          <FlatList
+            data={searchResults}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => {
+              const name = item.displayName || item.username || 'Member';
+              return (
+                <TouchableOpacity
+                  style={[styles.userItem, { borderBottomColor: colors.border }]}
+                  onPress={() => handleStartChat(item)}
+                  activeOpacity={0.7}
+                >
+                  <Avatar
+                    source={item.avatarUrl ? { uri: item.avatarUrl } : undefined}
+                    name={name}
+                    size="medium"
+                  />
+                  <View>
+                    <Text style={[styles.userItemName, { color: colors.textPrimary }]}>{name}</Text>
+                    {item.username ? (
+                      <Text style={[styles.userItemUsername, { color: colors.textTertiary }]}>@{item.username}</Text>
+                    ) : null}
+                  </View>
+                </TouchableOpacity>
+              );
+            }}
+            ListEmptyComponent={
+              userSearchQuery.trim() && !isSearching ? (
+                <View style={styles.emptyContainer}>
+                  <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No users found</Text>
+                </View>
+              ) : null
+            }
+          />
         </SafeAreaView>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
-function ConversationItem({ conversation, colorScheme }: { conversation: any; colorScheme: 'light' | 'dark' }) {
-  const colors = Colors[colorScheme];
-  const otherUser = conversation.otherUser;
-  const lastMessage = conversation.lastMessage;
-  const unreadCount = conversation.unreadCount || 0;
-
-  const handlePress = () => {
-    router.push({
-      pathname: '/chats/[id]',
-      params: { id: conversation.id, conversationId: conversation.id },
-    });
-  };
-
-  return (
-    <TouchableOpacity style={[styles.conversationItem, { backgroundColor: colors.surface }]} onPress={handlePress} activeOpacity={0.7}>
-      <Avatar
-        source={otherUser?.avatarUrl ? { uri: otherUser.avatarUrl } : undefined}
-        name={otherUser?.displayName || otherUser?.username}
-        size="medium"
-      />
-      <View style={styles.conversationContent}>
-        <View style={styles.conversationHeader}>
-          <Text style={[styles.conversationName, { color: colors.textPrimary }]}>
-            {otherUser?.displayName || otherUser?.username || 'Unknown'}
-          </Text>
-          {lastMessage && (
-            <Text style={[styles.conversationTime, { color: colors.textTertiary }]}>
-              {formatMessageTime(lastMessage.sentAt)}
-            </Text>
-          )}
-        </View>
-        <View style={styles.conversationMeta}>
-          <Text
-            style={[
-              styles.lastMessage,
-              { color: lastMessage?.status === 'unread' ? colors.textPrimary : colors.textSecondary },
-            ]}
-            numberOfLines={1}
-          >
-            {lastMessage?.senderId === 'me' ? 'You: ' : ''}
-            {getMessagePreview(lastMessage)}
-          </Text>
-          {unreadCount > 0 && (
-            <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
-              <Text style={styles.unreadBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-            </View>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function getMessagePreview(message: any): string {
-  if (!message) return 'No messages yet';
-  switch (message.messageType) {
-    case 'image': return 'Photo';
-    case 'file': return 'File';
-    case 'voice': return 'Voice message';
-    case 'system': return message.content;
-    case 'deletion': return 'This message was deleted';
-    default: return message.content || 'Encrypted message';
-  }
-}
-
-function formatMessageTime(dateString: string): string {
+function formatTime(dateString: string): string {
+  if (!dateString) return '';
   const date = new Date(dateString);
   const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
+  if (diffDays === 0) {
+    return date.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
+  }
+  if (diffDays < 7) {
+    return date.toLocaleDateString('en-KE', { weekday: 'short' });
+  }
+  return date.toLocaleDateString('en-KE', { month: 'short', day: 'numeric' });
+}
+
+function formatLastSeen(lastSeenAt?: string | null): string {
+  if (!lastSeenAt) return 'Offline';
+  const date = new Date(lastSeenAt);
+  const diffMs = Date.now() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return 'Now';
-  if (diffMins < 60) return `${diffMins}m`;
-  if (diffHours < 24) return `${diffHours}h`;
-  if (diffDays < 7) return `${diffDays}d`;
-  return date.toLocaleDateString('en-KE', { month: 'short', day: 'numeric' });
+  if (diffMins < 1) return 'Online now';
+  if (diffMins < 60) return `Last seen ${diffMins}m ago`;
+  if (diffHours < 24) return `Last seen ${diffHours}h ago`;
+  if (diffDays < 7) return `Last seen ${diffDays}d ago`;
+  return `Last seen ${date.toLocaleDateString('en-KE', { month: 'short', day: 'numeric' })}`;
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+  },
+  title: {
+    fontSize: Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+  },
+  newChatButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   searchContainer: {
-    padding: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.divider,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.full,
+    gap: Spacing.sm,
+    height: 42,
   },
   searchInput: {
-    height: 44,
-    borderRadius: BorderRadius.full,
-    paddingHorizontal: Spacing.md,
+    flex: 1,
     fontSize: Typography.sizes.md,
-  },
-  listContent: {
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.xl,
+    paddingVertical: Spacing.sm,
   },
   conversationItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.divider,
     gap: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   conversationContent: {
     flex: 1,
     minWidth: 0,
-    gap: Spacing.xs,
+    gap: 2,
   },
   conversationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: Spacing.sm,
   },
   conversationName: {
+    flex: 1,
     fontSize: Typography.sizes.md,
     fontWeight: Typography.weights.semibold,
-    flex: 1,
   },
   conversationTime: {
     fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.medium,
   },
-  conversationMeta: {
+  conversationPreviewRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: Spacing.sm,
   },
-  lastMessage: {
-    fontSize: Typography.sizes.sm,
+  conversationPreview: {
     flex: 1,
+    fontSize: Typography.sizes.sm,
   },
   unreadBadge: {
     minWidth: 20,
@@ -523,174 +428,66 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
   },
   unreadBadgeText: {
     color: '#FFFFFF',
     fontSize: Typography.sizes.xs,
     fontWeight: Typography.weights.bold,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  lastSeenRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.xl,
+    gap: 4,
+  },
+  lastSeenText: {
+    fontSize: Typography.sizes.xs,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.xxl,
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.sm,
   },
   emptyTitle: {
-    fontSize: Typography.sizes.lg,
+    fontSize: Typography.sizes.md,
     fontWeight: Typography.weights.semibold,
-    marginBottom: Spacing.sm,
   },
   emptyText: {
-    fontSize: Typography.sizes.md,
+    fontSize: Typography.sizes.sm,
     textAlign: 'center',
-  },
-  authPrompt: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.xl,
-  },
-  authPromptTitle: {
-    fontSize: Typography.sizes.lg,
-    fontWeight: Typography.weights.semibold,
-    marginBottom: Spacing.sm,
-    textAlign: 'center',
-  },
-  authPromptText: {
-    fontSize: Typography.sizes.md,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: Spacing.lg,
-  },
-  authButton: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
-    borderRadius: BorderRadius.md,
-  },
-  authButtonText: {
-    fontSize: Typography.sizes.md,
-    fontWeight: Typography.weights.semibold,
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    zIndex: 10,
+    maxWidth: 280,
   },
   modalContainer: {
     flex: 1,
   },
   modalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.md,
-    borderBottomWidth: 1,
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   modalTitle: {
-    fontSize: Typography.sizes.xl,
+    fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.bold,
-  },
-  modalSubtitle: {
-    fontSize: Typography.sizes.sm,
-    marginTop: 2,
-  },
-  modalCloseButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalSearchBox: {
-    padding: Spacing.md,
-    borderBottomWidth: 1,
-  },
-  modalSearchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 44,
-    borderRadius: BorderRadius.full,
-    paddingHorizontal: Spacing.md,
-  },
-  searchIcon: {
-    marginRight: Spacing.sm,
-  },
-  modalSearchInput: {
-    flex: 1,
-    fontSize: Typography.sizes.md,
-    height: '100%',
-  },
-  errorBox: {
-    marginHorizontal: Spacing.md,
-    marginTop: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-  },
-  errorText: {
-    fontSize: Typography.sizes.sm,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.xl,
-    marginTop: 40,
-    gap: Spacing.sm,
-  },
-  centerText: {
-    fontSize: Typography.sizes.sm,
-    textAlign: 'center',
-  },
-  resultsListContent: {
-    paddingVertical: Spacing.sm,
   },
   userItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.md,
-  },
-  userInfo: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  userDisplayName: {
-    fontSize: Typography.sizes.md,
-    fontWeight: Typography.weights.semibold,
-  },
-  userUsername: {
-    fontSize: Typography.sizes.sm,
-  },
-  actionContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  chatActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
+    paddingVertical: Spacing.md,
+    gap: Spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  chatActionText: {
+  userItemName: {
+    fontSize: Typography.sizes.md,
+    fontWeight: Typography.weights.medium,
+  },
+  userItemUsername: {
     fontSize: Typography.sizes.sm,
-    fontWeight: Typography.weights.semibold,
+    marginTop: 2,
   },
 });

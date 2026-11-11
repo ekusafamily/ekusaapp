@@ -15,4 +15,16 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, 'node_modules'),
 ];
 
+// 3. Ignore temporary lock files, IDE temp folders, and build outputs
+const blockList = [
+  /.*\.openclaude\/.*/,
+  /.*\.artifacts\/.*/,
+  /.*\.turbo\/.*/,
+  /.*\.git\/.*/,
+  /.*\.lock\.pending\..*/,
+  /.*\/dist\/.*/,
+];
+
+config.resolver.blockList = blockList;
+
 module.exports = config;
