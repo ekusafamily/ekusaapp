@@ -9,13 +9,13 @@ import { useQuery } from '@tanstack/react-query';
 import { announcementsApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
-import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
+import { Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { AnnouncementCard } from '@/components/AnnouncementCard';
 import type { Announcement } from '@ekusa/shared-types';
 
 export default function AnnouncementsScreen() {
   const { user } = useAuthStore();
-  const { colors, colorScheme } = useTheme();
+  const { colors } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedPriority, setSelectedPriority] = useState<string>('all');
 
@@ -68,13 +68,14 @@ export default function AnnouncementsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Category Filter */}
-      <View style={[styles.filterContainer, { backgroundColor: colors.surface }]}>
+      <View style={[styles.filterContainer, { backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScrollContent}>
           {categories.map((cat) => (
             <TouchableOpacity
               key={cat.key}
               style={[
                 styles.filterChip,
+                { borderColor: colors.border },
                 selectedCategory === cat.key && { backgroundColor: colors.primary, borderColor: colors.primary },
               ]}
               onPress={() => setSelectedCategory(cat.key)}
@@ -93,13 +94,14 @@ export default function AnnouncementsScreen() {
       </View>
 
       {/* Priority Filter */}
-      <View style={[styles.filterContainer, { backgroundColor: colors.surface, borderTopWidth: 0 }]}>
+      <View style={[styles.filterContainer, { backgroundColor: colors.surface, borderTopWidth: 0, borderBottomColor: colors.divider }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScrollContent}>
           {priorities.map((pri) => (
             <TouchableOpacity
               key={pri.key}
               style={[
                 styles.filterChip,
+                { borderColor: colors.border },
                 selectedPriority === pri.key && { backgroundColor: colors.primary, borderColor: colors.primary },
               ]}
               onPress={() => setSelectedPriority(pri.key)}
@@ -125,7 +127,6 @@ export default function AnnouncementsScreen() {
           <AnnouncementCard
             announcement={item}
             onPress={() => {}}
-            colorScheme={colorScheme}
           />
         )}
         ListEmptyComponent={
@@ -154,7 +155,6 @@ const styles = StyleSheet.create({
   filterContainer: {
     paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.light.divider,
   },
   filterScrollContent: {
     paddingHorizontal: Spacing.md,

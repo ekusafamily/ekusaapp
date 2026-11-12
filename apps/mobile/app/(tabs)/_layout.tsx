@@ -5,23 +5,20 @@
 
 import { Tabs } from 'expo-router';
 import { Home, MessageCircle, Calendar, User } from 'lucide-react-native';
-import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
-import { Colors } from '@/constants/Colors';
 
 export default function TabLayout() {
-  const { user } = useAuthStore();
-  const { colorScheme } = useTheme();
+  const { colors } = useTheme();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].primary,
-        tabBarInactiveTintColor: Colors[colorScheme].textSecondary,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: Colors[colorScheme].surface,
+          backgroundColor: colors.surface,
           borderTopWidth: 1,
-          borderTopColor: Colors[colorScheme].border,
+          borderTopColor: colors.border,
           height: 60,
           paddingBottom: 8,
           paddingTop: 4,
@@ -49,7 +46,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <MessageCircle size={size - 4} color={color} />
           ),
-          tabBarBadge: user ? undefined : '!',
         }}
       />
       {/* 4 main tabs: Home, Chats, Events, Profile */}

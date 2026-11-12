@@ -14,8 +14,8 @@ import {
   RefreshControl,
   Modal,
   ActivityIndicator,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { messagingApi, userApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
@@ -152,12 +152,13 @@ export default function ChatsScreen() {
     const preview = lastMsg
       ? `${isOwnLast ? 'You: ' : ''}${lastMsg.content}`
       : 'No messages yet';
+    const online = isRecentlyOnline(other.lastSeenAt);
 
     return (
       <TouchableOpacity
-        style={[styles.conversationItem, { borderBottomColor: colors.border }]}
+        style={[styles.conversationItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
         onPress={() => router.push(`/chats/${item.id}?recipientName=${encodeURIComponent(name)}`)}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
         <Avatar
           source={other.avatarUrl ? { uri: other.avatarUrl } : undefined}
@@ -179,7 +180,7 @@ export default function ChatsScreen() {
             <Text
               style={[
                 styles.conversationPreview,
-                { color: unread ? colors.textPrimary : colors.textTertiary },
+                { color: unread ? colors.textPrimary : colors.textSecondary },
                 unread && { fontWeight: Typography.weights.semibold },
               ]}
               numberOfLines={1}
@@ -196,7 +197,13 @@ export default function ChatsScreen() {
             {isOwnLast && lastMsg?.status === 'seen' ? (
               <CheckCheck size={13} color={colors.success} />
             ) : null}
-            <Text style={[styles.lastSeenText, { color: colors.textTertiary }]} numberOfLines={1}>
+            <Text
+              style={[
+                styles.lastSeenText,
+                { color: online ? colors.success : colors.textTertiary },
+              ]}
+              numberOfLines={1}
+            >
               {formatLastSeen(other.lastSeenAt)}
             </Text>
           </View>
@@ -206,21 +213,26 @@ export default function ChatsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Chats</Text>
+        <View>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Chats</Text>
+          <Text style={[styles.subtitle, { color: colors.textTertiary }]}>
+            {user ? 'Your conversations stay available offline' : 'Sign in to start chatting'}
+          </Text>
+        </View>
         <TouchableOpacity
           style={[styles.newChatButton, { backgroundColor: colors.primary }]}
           onPress={() => setShowNewChatModal(true)}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Plus size={20} color={colors.onPrimary} />
+          <Plus size={22} color={colors.onPrimary} strokeWidth={2.5} />
         </TouchableOpacity>
       </View>
 
       {/* Search */}
-      <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
+      <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Search size={18} color={colors.textTertiary} />
         <TextInput
           style={[styles.searchInput, { color: colors.textPrimary }]}
@@ -236,13 +248,16 @@ export default function ChatsScreen() {
         data={displayList}
         keyExtractor={(item) => item.id}
         renderItem={renderConversation}
+        contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl refreshing={isLoading} onRefresh={() => refetch()} colors={[colors.primary]} tintColor={colors.primary} />
         }
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.emptyContainer}>
-              <MessageSquare size={40} color={colors.textTertiary} />
+              <View style={[styles.emptyIconWrap, { backgroundColor: colors.surfaceVariant }]}>
+                <MessageSquare size={28} color={colors.primary} />
+              </View>
               <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No conversations yet</Text>
               <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
                 Tap the + button to start chatting with a family member.
@@ -259,17 +274,18 @@ export default function ChatsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowNewChatModal(false)}
       >
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        <SafeAreaView edges={['bottom']} style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>New chat</Text>
             <TouchableOpacity
+              style={[styles.modalClose, { backgroundColor: colors.surfaceVariant }]}
               onPress={() => { setShowNewChatModal(false); setUserSearchQuery(''); }}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <X size={22} color={colors.textPrimary} />
+              <X size={18} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
-          <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
+          <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Search size={18} color={colors.textTertiary} />
             <TextInput
               style={[styles.searchInput, { color: colors.textPrimary }]}
@@ -284,13 +300,14 @@ export default function ChatsScreen() {
           <FlatList
             data={searchResults}
             keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
             renderItem={({ item }) => {
               const name = item.displayName || item.username || 'Member';
               return (
                 <TouchableOpacity
-                  style={[styles.userItem, { borderBottomColor: colors.border }]}
+                  style={[styles.userItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   onPress={() => handleStartChat(item)}
-                  activeOpacity={0.7}
+                  activeOpacity={0.8}
                 >
                   <Avatar
                     source={item.avatarUrl ? { uri: item.avatarUrl } : undefined}
@@ -316,7 +333,7 @@ export default function ChatsScreen() {
           />
         </SafeAreaView>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -332,6 +349,11 @@ function formatTime(dateString: string): string {
     return date.toLocaleDateString('en-KE', { weekday: 'short' });
   }
   return date.toLocaleDateString('en-KE', { month: 'short', day: 'numeric' });
+}
+
+function isRecentlyOnline(lastSeenAt?: string | null): boolean {
+  if (!lastSeenAt) return false;
+  return Date.now() - new Date(lastSeenAt).getTime() < 5 * 60000;
 }
 
 function formatLastSeen(lastSeenAt?: string | null): string {
@@ -361,13 +383,19 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
   },
   title: {
-    fontSize: Typography.sizes.xl,
+    fontSize: Typography.sizes.xxxl,
     fontWeight: Typography.weights.bold,
+    fontFamily: Typography.fontFamilies.display,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: Typography.sizes.xs,
+    marginTop: 2,
   },
   newChatButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.sm,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -377,22 +405,29 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.md,
     marginBottom: Spacing.sm,
     paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
     gap: Spacing.sm,
-    height: 42,
+    height: 44,
   },
   searchInput: {
     flex: 1,
     fontSize: Typography.sizes.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: 0,
+  },
+  listContent: {
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.xl,
+    gap: Spacing.sm,
+    flexGrow: 1,
   },
   conversationItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
+    padding: Spacing.md,
     gap: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
   },
   conversationContent: {
     flex: 1,
@@ -450,6 +485,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     gap: Spacing.sm,
   },
+  emptyIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: BorderRadius.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
   emptyTitle: {
     fontSize: Typography.sizes.md,
     fontWeight: Typography.weights.semibold,
@@ -473,14 +516,23 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: Typography.sizes.lg,
     fontWeight: Typography.weights.bold,
+    fontFamily: Typography.fontFamilies.display,
+  },
+  modalClose: {
+    width: 32,
+    height: 32,
+    borderRadius: BorderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   userItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
+    padding: Spacing.md,
     gap: Spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    marginBottom: Spacing.sm,
   },
   userItemName: {
     fontSize: Typography.sizes.md,

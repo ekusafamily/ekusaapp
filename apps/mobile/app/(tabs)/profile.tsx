@@ -9,15 +9,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi, authApi, membershipApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
-import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
+import { Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { Avatar } from '@/components/Avatar';
 import { MembershipBadge } from '@/components/MembershipBadge';
 import { router } from 'expo-router';
+import { RotateCw, ChevronRight, LogIn, UserPlus } from 'lucide-react-native';
 import type { MembershipApplication, User as UserType } from '@ekusa/shared-types';
 
 export default function ProfileScreen() {
   const { user, logout, updateProfile } = useAuthStore();
-  const { colors, colorScheme } = useTheme();
+  const { colors } = useTheme();
   const queryClient = useQueryClient();
 
   const { data: profile, refetch: refetchProfile, isLoading: profileLoading } = useQuery<UserType>({
@@ -84,9 +85,32 @@ export default function ProfileScreen() {
   if (!user) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.authPrompt}>
-          <Text style={[styles.authPromptTitle, { color: colors.textPrimary }]}>Please log in</Text>
-          <Text style={[styles.authPromptText, { color: colors.textSecondary }]}>You need to be logged in to view your profile.</Text>
+        <View style={[styles.signInCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.signInIconWrap, { backgroundColor: colors.primaryContainer }]}>
+            <Avatar name="EKUSA" size="xlarge" />
+          </View>
+          <Text style={[styles.signInTitle, { color: colors.textPrimary }]}>Welcome to EKUSA</Text>
+          <Text style={[styles.signInText, { color: colors.textSecondary }]}>
+            Sign in to manage your membership, chat with family members, and follow association news.
+          </Text>
+
+          <TouchableOpacity
+            style={[styles.signInButton, { backgroundColor: colors.primary }]}
+            onPress={() => router.push('/(auth)/login')}
+            activeOpacity={0.85}
+          >
+            <LogIn size={18} color={colors.onPrimary} />
+            <Text style={[styles.signInButtonText, { color: colors.onPrimary }]}>Sign in</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.registerButton, { borderColor: colors.border }]}
+            onPress={() => router.push('/(auth)/register')}
+            activeOpacity={0.85}
+          >
+            <UserPlus size={18} color={colors.primaryDark} />
+            <Text style={[styles.registerButtonText, { color: colors.primaryDark }]}>Create an account</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -127,7 +151,7 @@ export default function ProfileScreen() {
       </View>
 
       {/* Membership Status Card */}
-      <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+      <View style={[styles.sectionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Membership Status</Text>
@@ -139,7 +163,7 @@ export default function ProfileScreen() {
               {membershipLoading ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
-                <Text style={[styles.refreshIconText, { color: colors.primary }]}>↻</Text>
+                <RotateCw size={16} color={colors.primary} />
               )}
             </TouchableOpacity>
           </View>
@@ -155,7 +179,7 @@ export default function ProfileScreen() {
             </View>
           </View>
           {membership && membership.registrationNumber && (
-            <View style={styles.membershipDetails}>
+            <View style={[styles.membershipDetails, { borderTopColor: colors.divider }]}>
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Registration No.</Text>
                 <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{membership.registrationNumber}</Text>
@@ -173,7 +197,7 @@ export default function ProfileScreen() {
                 <Text style={[styles.detailValue, { color: colors.textPrimary }]}>{membership.yearOfStudy}</Text>
               </View>
               {membership.rejectionReason && (
-                <View style={styles.rejectionReason}>
+                <View style={[styles.rejectionReason, { borderTopColor: colors.errorContainer }]}>
                   <Text style={[styles.detailLabel, { color: colors.error }]}>Rejection Reason</Text>
                   <Text style={[styles.detailValue, { color: colors.error }]}>{membership.rejectionReason}</Text>
                 </View>
@@ -181,7 +205,7 @@ export default function ProfileScreen() {
             </View>
           )}
           {displayUser?.accountStatus !== 'verified_member' && (
-            <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(auth)/membership-apply')}>
+            <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.primary }]} onPress={() => router.push('/(auth)/membership-apply')}>
               <Text style={[styles.actionButtonText, { color: colors.onPrimary }]}>Apply for Membership</Text>
             </TouchableOpacity>
           )}
@@ -232,12 +256,12 @@ export default function ProfileScreen() {
             ],
           },
         ].map((section) => (
-          <SettingsSection key={section.title} section={section} colorScheme={colorScheme} />
+          <SettingsSection key={section.title} section={section} />
         ))}
       </View>
 
       {/* App Info */}
-      <View style={[styles.appInfo, { backgroundColor: colors.surface }]}>
+      <View style={[styles.appInfo, { backgroundColor: colors.surface, borderTopColor: colors.divider }]}>
         <Text style={[styles.appVersion, { color: colors.textTertiary }]}>EKUSA Digital Platform v1.0.0</Text>
         <Text style={[styles.appBuild, { color: colors.textTertiary }]}>Build 2024.01.15</Text>
       </View>
@@ -259,16 +283,17 @@ function getMembershipLabel(status: string): string {
   return labels[status] || 'Unknown';
 }
 
-function SettingsSection({ section, colorScheme }: { section: any; colorScheme: 'light' | 'dark' }) {
-  const colors = Colors[colorScheme];
+function SettingsSection({ section }: { section: any }) {
+  const { colors } = useTheme();
   return (
-    <View style={[styles.settingsSection, { backgroundColor: colors.surface }]}>
-      <Text style={[styles.settingsSectionTitle, { color: colors.textSecondary }]}>{section.title}</Text>
+    <View style={[styles.settingsSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Text style={[styles.settingsSectionTitle, { color: colors.textSecondary, backgroundColor: colors.surfaceVariant }]}>{section.title}</Text>
       {section.items.map((item: any, index: number) => (
         <TouchableOpacity
           key={item.label}
           style={[
             styles.settingsItem,
+            { borderBottomColor: colors.divider },
             index === section.items.length - 1 ? { borderBottomWidth: 0 } : {},
             item.destructive && { backgroundColor: colors.errorContainer },
           ]}
@@ -276,12 +301,11 @@ function SettingsSection({ section, colorScheme }: { section: any; colorScheme: 
           activeOpacity={0.7}
         >
           <View style={styles.itemLeft}>
-            {item.icon ? <Text style={styles.itemIcon}>{item.icon}</Text> : null}
             <Text style={[styles.itemLabel, item.destructive ? { color: colors.error } : { color: colors.textPrimary }]}>
               {item.label}
             </Text>
           </View>
-          {!item.action && <Text style={{ color: colors.textTertiary, fontSize: 18 }}>›</Text>}
+          {!item.action && <ChevronRight size={16} color={colors.textTertiary} />}
         </TouchableOpacity>
       ))}
     </View>
@@ -329,7 +353,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.light.border,
   },
   sectionHeader: {
     marginBottom: Spacing.md,
@@ -377,7 +400,6 @@ const styles = StyleSheet.create({
   membershipDetails: {
     paddingTop: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: Colors.light.divider,
     gap: Spacing.sm,
   },
   detailRow: {
@@ -395,13 +417,11 @@ const styles = StyleSheet.create({
   rejectionReason: {
     paddingTop: Spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: Colors.light.errorContainer,
   },
   actionButton: {
     marginTop: Spacing.sm,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
-    backgroundColor: Colors.light.primary,
     alignItems: 'center',
   },
   actionButtonText: {
@@ -416,7 +436,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: Colors.light.border,
   },
   settingsSectionTitle: {
     fontSize: Typography.sizes.xs,
@@ -425,7 +444,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    backgroundColor: Colors.light.surfaceVariant,
   },
   settingsItem: {
     flexDirection: 'row',
@@ -434,15 +452,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.light.divider,
   },
   itemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-  },
-  itemIcon: {
-    fontSize: 20,
   },
   itemLabel: {
     fontSize: Typography.sizes.md,
@@ -452,7 +466,6 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: Colors.light.divider,
     marginTop: Spacing.lg,
   },
   appVersion: {
@@ -462,6 +475,57 @@ const styles = StyleSheet.create({
   appBuild: {
     fontSize: Typography.sizes.xs,
     marginTop: Spacing.xs,
+  },
+  signInCard: {
+    margin: Spacing.lg,
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  signInIconWrap: {
+    borderRadius: BorderRadius.full,
+    padding: Spacing.sm,
+  },
+  signInTitle: {
+    fontSize: Typography.sizes.xxl,
+    fontWeight: Typography.weights.bold,
+    fontFamily: Typography.fontFamilies.display,
+    textAlign: 'center',
+  },
+  signInText: {
+    fontSize: Typography.sizes.md,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  signInButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    alignSelf: 'stretch',
+    height: 48,
+    borderRadius: BorderRadius.sm,
+    marginTop: Spacing.sm,
+  },
+  signInButtonText: {
+    fontSize: Typography.sizes.md,
+    fontWeight: Typography.weights.semibold,
+  },
+  registerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    alignSelf: 'stretch',
+    height: 48,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  registerButtonText: {
+    fontSize: Typography.sizes.md,
+    fontWeight: Typography.weights.semibold,
   },
   authPrompt: {
     flex: 1,

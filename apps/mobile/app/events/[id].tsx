@@ -4,12 +4,12 @@
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
-import { MapPin, Calendar, Clock, Users, DollarSign, Pin } from 'lucide-react-native';
+import { MapPin, Calendar, Clock, Users, DollarSign, Pin, CheckCircle2 } from 'lucide-react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
-import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
+import { Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import type { ColorPalette } from '@/constants/DesignTokens';
 import { router } from 'expo-router';
 import { format } from 'date-fns';
@@ -22,7 +22,7 @@ interface RouteParams {
 export default function EventDetailScreen({ route }: { route: { params: RouteParams } }) {
   const { id: eventId } = route.params;
   const { user } = useAuthStore();
-  const { colors, colorScheme } = useTheme();
+  const { colors } = useTheme();
   const queryClient = useQueryClient();
   const [isRegistering, setIsRegistering] = useState(false);
 
@@ -118,14 +118,14 @@ export default function EventDetailScreen({ route }: { route: { params: RoutePar
   const canCancel = isRegistered && !isEventPast;
 
   const categoryColors: Record<string, string> = {
-    meeting: '#1565C0',
-    hike: '#2E7D32',
-    trip: '#6A1B9A',
-    social: '#E65100',
-    sports: '#C62828',
-    academic: '#006064',
-    cultural: '#AD1457',
-    welfare: '#2E7D32',
+    meeting: '#6E8BA8',
+    hike: '#5DB872',
+    trip: '#CC785C',
+    social: '#D4A017',
+    sports: '#C64545',
+    academic: '#56635C',
+    cultural: '#A9583E',
+    welfare: '#5DB872',
   };
 
   const categoryColor = categoryColors[event.category] || colors.primary;
@@ -197,31 +197,34 @@ export default function EventDetailScreen({ route }: { route: { params: RoutePar
         </View>
 
         {/* Description */}
-        <View style={styles.section}>
+        <View style={[styles.section, { borderTopColor: colors.divider }]}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Description</Text>
           <Text style={[styles.description, { color: colors.textSecondary }]}>{event.description}</Text>
         </View>
 
         {/* Eligibility */}
         {event.eligibility && (
-          <View style={styles.section}>
+          <View style={[styles.section, { borderTopColor: colors.divider }]}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Eligibility</Text>
             <Text style={[styles.description, { color: colors.textSecondary }]}>{event.eligibility}</Text>
           </View>
         )}
 
         {/* Organizer */}
-        <View style={styles.section}>
+        <View style={[styles.section, { borderTopColor: colors.divider }]}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Organizer</Text>
           <Text style={[styles.description, { color: colors.textSecondary }]}>{event.createdByName}</Text>
         </View>
       </View>
 
       {/* Action Buttons */}
-      <View style={[styles.actionCard, { backgroundColor: colors.surface }]}>
+      <View style={[styles.actionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         {isRegistered ? (
           <View style={styles.registeredState}>
-            <Text style={[styles.registeredText, { color: colors.success }]}>✓ Registered</Text>
+            <View style={styles.registeredRow}>
+              <CheckCircle2 size={20} color={colors.success} />
+              <Text style={[styles.registeredText, { color: colors.success }]}>Registered</Text>
+            </View>
             <Text style={[styles.registeredSubtext, { color: colors.textSecondary }]}>
               You are registered for this event
             </Text>
@@ -420,7 +423,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
     paddingTop: Spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: Colors.light.divider,
   },
   sectionTitle: {
     fontSize: Typography.sizes.md,
@@ -437,9 +439,13 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.light.border,
   },
   registeredState: {
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  registeredRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
   },

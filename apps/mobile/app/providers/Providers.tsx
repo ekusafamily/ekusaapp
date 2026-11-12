@@ -4,6 +4,7 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ReactNode, useState } from 'react';
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -22,8 +23,10 @@ export function Providers({ children }: { children: ReactNode }) {
   }));
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
+    </SafeAreaProvider>
   );
 }

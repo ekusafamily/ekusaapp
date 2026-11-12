@@ -6,7 +6,7 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Pin } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
-import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
+import { Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 
 interface AnnouncementCardProps {
   announcement: {
@@ -20,14 +20,7 @@ interface AnnouncementCardProps {
     publisherName: string;
   };
   onPress: () => void;
-  colorScheme: 'light' | 'dark';
 }
-
-const PRIORITY_COLORS: Record<string, { light: string; dark: string }> = {
-  normal: { light: '#757575', dark: '#9E9E9E' },
-  important: { light: '#F57F17', dark: '#FFB74D' },
-  urgent: { light: '#C62828', dark: '#EF9A9A' },
-};
 
 const CATEGORY_LABELS: Record<string, string> = {
   general: 'General',
@@ -40,13 +33,17 @@ const CATEGORY_LABELS: Record<string, string> = {
   administrative: 'Admin',
 };
 
-export function AnnouncementCard({ announcement, onPress, colorScheme }: AnnouncementCardProps) {
-  const { colors } = { colors: Colors[colorScheme] };
-  const priorityColor = PRIORITY_COLORS[announcement.priority]?.[colorScheme] || colors.textTertiary;
+export function AnnouncementCard({ announcement, onPress }: AnnouncementCardProps) {
+  const { colors } = useTheme();
+  const priorityColor = (colors.priority as Record<string, string>)[announcement.priority] || colors.textTertiary;
   const categoryLabel = CATEGORY_LABELS[announcement.category] || announcement.category;
 
   return (
-    <TouchableOpacity style={[styles.card, { backgroundColor: colors.surface }]} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View
@@ -87,7 +84,7 @@ export function AnnouncementCard({ announcement, onPress, colorScheme }: Announc
         {announcement.body}
       </Text>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { borderTopColor: colors.divider }]}>
         <Text style={[styles.publisher, { color: colors.textTertiary }]}>
           By {announcement.publisherName}
         </Text>
@@ -118,7 +115,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.light.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -173,7 +169,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: Colors.light.divider,
     paddingTop: Spacing.sm,
   },
   publisher: {

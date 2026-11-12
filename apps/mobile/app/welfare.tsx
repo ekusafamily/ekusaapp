@@ -9,9 +9,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { welfareApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
-import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
+import { Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
+import type { ColorPalette } from '@/constants/DesignTokens';
 import { router } from 'expo-router';
 import { submitWelfareRequestSchema } from '@ekusa/validation';
+import { Plus, X, ChevronRight } from 'lucide-react-native';
 
 const CATEGORIES = [
   { value: 'personal', label: 'Personal Welfare' },
@@ -32,19 +34,19 @@ const STATUS_LABELS: Record<string, string> = {
   closed: 'Closed',
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  submitted: '#F57F17',
-  under_review: '#1565C0',
-  in_progress: '#6A1B9A',
-  awaiting_information: '#E65100',
-  resolved: '#2E7D32',
-  closed: '#757575',
+const STATUS_COLOR_KEYS: Record<string, keyof ColorPalette> = {
+  submitted: 'warning',
+  under_review: 'info',
+  in_progress: 'primary',
+  awaiting_information: 'primaryDark',
+  resolved: 'success',
+  closed: 'textTertiary',
 };
 
 export default function WelfareScreen() {
   const { user } = useAuthStore();
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
-  const { colors, colorScheme } = useTheme();
+  const { colors } = useTheme();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -119,8 +121,8 @@ export default function WelfareScreen() {
         <View style={styles.authPrompt}>
           <Text style={[styles.authPromptTitle, { color: colors.textPrimary }]}>Sign in to access welfare</Text>
           <Text style={[styles.authPromptText, { color: colors.textSecondary }]}>You need to be logged in to submit and track welfare requests.</Text>
-          <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/(auth)/login')}>
-            <Text style={styles.loginButtonText}>Sign In</Text>
+          <TouchableOpacity style={[styles.loginButton, { backgroundColor: colors.primary }]} onPress={() => router.push('/(auth)/login')}>
+            <Text style={[styles.loginButtonText, { color: colors.onPrimary }]}>Sign In</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -148,19 +150,19 @@ export default function WelfareScreen() {
         {/* Submit Button / Form */}
         {!showForm ? (
           <TouchableOpacity
-            style={[styles.submitCard, { backgroundColor: colors.surface }]}
+            style={[styles.submitCard, { backgroundColor: colors.surface, borderColor: colors.primary }]}
             onPress={() => setShowForm(true)}
             activeOpacity={0.8}
           >
-            <Text style={[styles.submitCardIcon, { color: colors.primary }]}>+</Text>
+            <Plus size={22} color={colors.primary} strokeWidth={2.5} />
             <Text style={[styles.submitCardText, { color: colors.textPrimary }]}>Submit New Request</Text>
           </TouchableOpacity>
         ) : (
-          <View style={[styles.formCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.formHeader}>
               <Text style={[styles.formTitle, { color: colors.textPrimary }]}>New Welfare Request</Text>
-              <TouchableOpacity onPress={() => setShowForm(false)}>
-                <Text style={{ color: colors.textTertiary, fontSize: 24 }}>×</Text>
+              <TouchableOpacity onPress={() => setShowForm(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <X size={22} color={colors.textTertiary} />
               </TouchableOpacity>
             </View>
 
@@ -177,7 +179,7 @@ export default function WelfareScreen() {
                 <Text style={[styles.pickerText, { color: formData.category ? colors.textPrimary : colors.textTertiary }]}>
                   {formData.category ? CATEGORIES.find(c => c.value === formData.category)?.label : 'Select Category'}
                 </Text>
-                <Text style={{ color: colors.textTertiary }}>{'>'}</Text>
+                <ChevronRight size={18} color={colors.textTertiary} />
               </TouchableOpacity>
               {errors.category && <Text style={[styles.fieldError, { color: colors.error }]}>{errors.category}</Text>}
               <Modal
@@ -241,8 +243,11 @@ export default function WelfareScreen() {
             </View>
 
             <View style={styles.formActions}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setShowForm(false)}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+              <TouchableOpacity
+                style={[styles.cancelButton, { borderColor: colors.border }]}
+                onPress={() => setShowForm(false)}
+              >
+                <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -284,7 +289,7 @@ export default function WelfareScreen() {
           <FlatList
             data={requests?.items}
             keyExtractor={(item: any) => item.id}
-            renderItem={({ item }) => <RequestItem request={item} colorScheme={colorScheme} />}
+            renderItem={({ item }) => <RequestItem request={item} />}
             contentContainerStyle={styles.listContent}
           />
         )}
@@ -293,9 +298,9 @@ export default function WelfareScreen() {
   );
 }
 
-function RequestItem({ request, colorScheme }: { request: any; colorScheme: 'light' | 'dark' }) {
-  const colors = Colors[colorScheme];
-  const statusColor = STATUS_COLORS[request.status] || colors.textTertiary;
+function RequestItem({ request }: { request: any }) {
+  const { colors } = useTheme();
+  const statusColor = (colors[STATUS_COLOR_KEYS[request.status] ?? ''] as string) || colors.textTertiary;
 
   return (
     <View style={[styles.requestCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -314,17 +319,17 @@ function RequestItem({ request, colorScheme }: { request: any; colorScheme: 'lig
       <Text style={[styles.requestDescription, { color: colors.textSecondary }]}>{request.description}</Text>
 
       {request.assignedOfficerName && (
-        <View style={styles.assignedInfo}>
+        <View style={[styles.assignedInfo, { borderTopColor: colors.divider }]}>
           <Text style={[styles.assignedLabel, { color: colors.textTertiary }]}>Assigned to:</Text>
           <Text style={[styles.assignedName, { color: colors.textPrimary }]}>{request.assignedOfficerName}</Text>
         </View>
       )}
 
       {request.updates && request.updates.length > 0 && (
-        <View style={styles.updatesContainer}>
+        <View style={[styles.updatesContainer, { borderTopColor: colors.divider }]}>
           <Text style={[styles.updatesTitle, { color: colors.textSecondary }]}>Updates</Text>
           {request.updates.map((update: any) => (
-            <View key={update.id} style={styles.updateItem}>
+            <View key={update.id} style={[styles.updateItem, { borderBottomColor: colors.divider }]}>
               <Text style={[styles.updateAuthor, { color: colors.textSecondary }]}>{update.authorName}</Text>
               <Text style={[styles.updateMessage, { color: colors.textPrimary }]}>{update.message}</Text>
               <Text style={[styles.updateTime, { color: colors.textTertiary }]}>
@@ -379,10 +384,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.xl,
     borderRadius: BorderRadius.md,
-    backgroundColor: Colors.light.primary,
   },
   loginButtonText: {
-    color: '#FFFFFF',
     fontSize: Typography.sizes.md,
     fontWeight: Typography.weights.semibold,
   },
@@ -411,11 +414,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: Colors.light.primary,
-  },
-  submitCardIcon: {
-    fontSize: 24,
-    fontWeight: Typography.weights.bold,
   },
   submitCardText: {
     fontSize: Typography.sizes.md,
@@ -426,7 +424,6 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     marginBottom: Spacing.lg,
     borderWidth: 1,
-    borderColor: Colors.light.border,
   },
   formHeader: {
     flexDirection: 'row',
@@ -514,12 +511,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: Colors.light.border,
   },
   cancelButtonText: {
     fontSize: Typography.sizes.md,
     fontWeight: Typography.weights.semibold,
-    color: Colors.light.textSecondary,
   },
   submitButton: {
     paddingVertical: Spacing.md,
@@ -606,7 +601,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
     paddingTop: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: Colors.light.divider,
   },
   assignedLabel: {
     fontSize: Typography.sizes.xs,
@@ -619,7 +613,6 @@ const styles = StyleSheet.create({
   updatesContainer: {
     paddingTop: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: Colors.light.divider,
   },
   updatesTitle: {
     fontSize: Typography.sizes.xs,
@@ -629,7 +622,6 @@ const styles = StyleSheet.create({
   updateItem: {
     paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.light.divider,
   },
   updateAuthor: {
     fontSize: Typography.sizes.xs,

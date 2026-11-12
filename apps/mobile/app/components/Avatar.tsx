@@ -48,8 +48,8 @@ export function Avatar({ source, name, size = 'medium', style }: AvatarProps) {
     for (let i = 0; i < name.length; i++) {
       hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
-    const hue = Math.abs(hash % 360);
-    return `hsl(${hue}, 60%, 45%)`;
+    const hue = Math.abs(hash % 60) + 15; // warm earth tones: amber to coral
+    return `hsl(${hue}, 38%, 42%)`;
   }, [name, colors.primaryContainer]);
 
   if (source) {

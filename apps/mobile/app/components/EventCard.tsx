@@ -6,7 +6,7 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MapPin, Calendar, Users, Clock } from 'lucide-react-native';
 import { useTheme } from '@/hooks/useTheme';
-import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
+import { Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 
 interface EventCardProps {
   event: {
@@ -23,18 +23,17 @@ interface EventCardProps {
     status: string;
   };
   onPress: () => void;
-  colorScheme: 'light' | 'dark';
 }
 
-const CATEGORY_COLORS: Record<string, { light: string; dark: string }> = {
-  meeting: { light: '#1565C0', dark: '#64B5F6' },
-  hike: { light: '#2E7D32', dark: '#81C784' },
-  trip: { light: '#6A1B9A', dark: '#BA68C8' },
-  social: { light: '#E65100', dark: '#FFB74D' },
-  sports: { light: '#C62828', dark: '#EF9A9A' },
-  academic: { light: '#006064', dark: '#4DB6AC' },
-  cultural: { light: '#AD1457', dark: '#F06292' },
-  welfare: { light: '#2E7D32', dark: '#81C784' },
+const CATEGORY_COLORS: Record<string, string> = {
+  meeting: '#6E8BA8',
+  hike: '#5DB872',
+  trip: '#CC785C',
+  social: '#D4A017',
+  sports: '#C64545',
+  academic: '#56635C',
+  cultural: '#A9583E',
+  welfare: '#5DB872',
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -48,15 +47,19 @@ const CATEGORY_LABELS: Record<string, string> = {
   welfare: 'Welfare',
 };
 
-export function EventCard({ event, onPress, colorScheme }: EventCardProps) {
-  const { colors } = { colors: Colors[colorScheme] };
-  const categoryColor = CATEGORY_COLORS[event.category]?.[colorScheme] || colors.primary;
+export function EventCard({ event, onPress }: EventCardProps) {
+  const { colors } = useTheme();
+  const categoryColor = CATEGORY_COLORS[event.category] || colors.primary;
   const categoryLabel = CATEGORY_LABELS[event.category] || event.category;
   const isUpcoming = new Date(event.startAt) > new Date();
   const isRegistrationOpen = new Date(event.registrationDeadline) > new Date();
 
   return (
-    <TouchableOpacity style={[styles.card, { backgroundColor: colors.surface }]} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
       <View style={styles.header}>
         <View
           style={[
@@ -113,7 +116,7 @@ export function EventCard({ event, onPress, colorScheme }: EventCardProps) {
       </View>
 
       {event.registrationFee > 0 && (
-        <View style={styles.feeContainer}>
+        <View style={[styles.feeContainer, { borderTopColor: colors.divider }]}>
           <Text style={[styles.feeText, { color: colors.textPrimary }]}>
             Fee: KES {formatCurrency(event.registrationFee)}
           </Text>
@@ -153,7 +156,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.light.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -210,7 +212,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     paddingTop: Spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: Colors.light.divider,
   },
   feeText: {
     fontSize: Typography.sizes.sm,

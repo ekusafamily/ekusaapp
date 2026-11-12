@@ -14,17 +14,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  SafeAreaView,
 } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { messagingApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
+import type { ColorPalette } from '@/constants/DesignTokens';
 import { Avatar } from '@/components/Avatar';
 import { storageService } from '@/services/storageService';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Send, Check, CheckCheck } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ArrowLeft, Send, Check, CheckCheck, MessageSquare, AlertCircle, Loader } from 'lucide-react-native';
 
 const POLL_INTERVAL = 8000; // Poll for new messages every 8 seconds
 
@@ -225,7 +226,14 @@ export default function ChatScreen() {
             <Text style={[styles.messageTime, { color: isOwn ? 'rgba(255,255,255,0.7)' : colors.textTertiary }]}>
               {formatTime(item.sentAt)}
             </Text>
-            {isOwn && <MessageStatus status={item.status} failed={item.status === 'failed'} />}
+            {isOwn && (
+              <MessageStatus
+                status={item.status}
+                failed={item.status === 'failed'}
+                colors={colors}
+                isOwnBubble
+              />
+            )}
           </View>
         </View>
       </View>
@@ -243,7 +251,10 @@ export default function ChatScreen() {
   const partnerTitle = otherUser?.displayName || otherUser?.username || params.recipientName || 'Member';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      edges={['bottom']}
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       {/* Chat Header */}
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity
@@ -286,7 +297,9 @@ export default function ChatScreen() {
           onLayout={scrollToBottom}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Send size={32} color={colors.primary} />
+              <View style={[styles.emptyIconWrap, { backgroundColor: colors.primaryContainer }]}>
+                <MessageSquare size={28} color={colors.primaryDark} />
+              </View>
               <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Start the conversation</Text>
               <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
                 Messages stay available even when you are offline.
@@ -332,23 +345,30 @@ export default function ChatScreen() {
   );
 }
 
-function MessageStatus({ status, failed }: { status: string; failed: boolean }) {
-  const color = failed ? '#FF6B6B' : 'rgba(255,255,255,0.85)';
-
+function MessageStatus({
+  status,
+  failed,
+  colors,
+}: {
+  status: string;
+  failed: boolean;
+  colors: ColorPalette;
+  isOwnBubble?: boolean;
+}) {
   if (failed) {
-    return <Text style={[styles.statusLabel, { color }]}>Failed</Text>;
+    return <AlertCircle size={14} color={colors.messageStatus.failed} />;
   }
   if (status === 'pending') {
-    return <Text style={[styles.statusLabel, { color }]}>Sending</Text>;
+    return <Loader size={13} color="rgba(255,255,255,0.85)" />;
   }
   if (status === 'sent') {
-    return <Check size={14} color={color} />;
+    return <Check size={14} color="rgba(255,255,255,0.85)" />;
   }
   if (status === 'delivered') {
-    return <CheckCheck size={14} color={color} />;
+    return <CheckCheck size={14} color="rgba(255,255,255,0.85)" />;
   }
   if (status === 'seen') {
-    return <CheckCheck size={14} color="#7CF29B" />;
+    return <CheckCheck size={14} color={colors.messageStatus.seen} />;
   }
   return null;
 }
@@ -420,6 +440,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.xl,
     gap: Spacing.sm,
+  },
+  emptyIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: BorderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
   },
   emptyTitle: {
     fontSize: Typography.sizes.md,

@@ -8,6 +8,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { apiClient } from '@ekusa/api-client';
 import { router } from 'expo-router';
+import { ArrowLeft, CheckCircle2 } from 'lucide-react-native';
 
 export default function ForgotPasswordScreen() {
   const { colors } = useTheme();
@@ -46,8 +47,13 @@ export default function ForgotPasswordScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Back Button */}
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={[styles.backButtonText, { color: colors.textPrimary }]}>← Back</Text>
+        <TouchableOpacity
+          style={[styles.backButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+          onPress={() => router.back()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <ArrowLeft size={18} color={colors.textPrimary} />
+          <Text style={[styles.backButtonText, { color: colors.textPrimary }]}>Back</Text>
         </TouchableOpacity>
 
         {/* Logo/Brand */}
@@ -122,7 +128,7 @@ export default function ForgotPasswordScreen() {
         {success && (
           <View style={styles.successContainer}>
             <View style={[styles.successIcon, { backgroundColor: colors.successContainer }]}>
-              <Text style={{ color: colors.success, fontSize: 24 }}>✓</Text>
+              <CheckCircle2 size={32} color={colors.success} />
             </View>
             <Text style={[styles.successTitle, { color: colors.textPrimary }]}>Check your email</Text>
             <Text style={[styles.successText, { color: colors.textSecondary }]}>
@@ -163,8 +169,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
     marginBottom: Spacing.md,
     alignSelf: 'flex-start',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
   },
   backButtonText: {
     fontSize: Typography.sizes.md,

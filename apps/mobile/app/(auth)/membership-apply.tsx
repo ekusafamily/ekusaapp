@@ -11,6 +11,7 @@ import { membershipApi } from '@ekusa/api-client';
 import { router } from 'expo-router';
 import { submitMembershipRequestSchema } from '@ekusa/validation';
 import { useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Check, Info, ChevronDown } from 'lucide-react-native';
 
 const CAMPUSES = ['Embu Main Campus', 'Kirinyaga Campus', 'Nairobi Campus', 'Other'];
 const COURSES = [
@@ -148,7 +149,7 @@ export default function MembershipApplyScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.brandContainer}>
             <View style={[styles.logo, { backgroundColor: colors.success }]}>
-              <Text style={styles.logoText}>✓</Text>
+              <Check size={36} color="#FFFFFF" strokeWidth={3} />
             </View>
             <Text style={[styles.appName, { color: colors.textPrimary }]}>EKUSA Digital Platform</Text>
           </View>
@@ -196,8 +197,13 @@ export default function MembershipApplyScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Back Button */}
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={[styles.backButtonText, { color: colors.textPrimary }]}>← Back</Text>
+        <TouchableOpacity
+          style={[styles.backButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+          onPress={() => router.back()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <ArrowLeft size={18} color={colors.textPrimary} />
+          <Text style={[styles.backButtonText, { color: colors.textPrimary }]}>Back</Text>
         </TouchableOpacity>
 
         {/* Logo/Brand */}
@@ -212,7 +218,10 @@ export default function MembershipApplyScreen() {
         {/* Info */}
         <View style={styles.infoContainer}>
           <View style={[styles.infoCard, { backgroundColor: colors.infoContainer }]}>
-            <Text style={[styles.infoTitle, { color: colors.info }]}>ℹ️ Verification Required</Text>
+            <View style={styles.infoTitleRow}>
+              <Info size={16} color={colors.info} />
+              <Text style={[styles.infoTitle, { color: colors.info }]}>Verification Required</Text>
+            </View>
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
               Verified members get access to exclusive announcements, events, welfare support,
               and community groups. Applications are reviewed by the Membership Officer.
@@ -358,7 +367,7 @@ function SelectField({
         <Text style={[styles.selectValueText, { color: value ? colors.textPrimary : colors.textTertiary }]}>
           {selectedLabel || placeholder}
         </Text>
-        <Text style={{ color: colors.textSecondary, fontSize: 12 }}>▼</Text>
+        <ChevronDown size={16} color={colors.textTertiary} />
       </TouchableOpacity>
       {error ? <Text style={[styles.fieldError, { color: colors.error }]}>{error}</Text> : null}
 
@@ -420,8 +429,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
     marginBottom: Spacing.md,
     alignSelf: 'flex-start',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
   },
   backButtonText: {
     fontSize: Typography.sizes.md,
@@ -468,10 +484,15 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     borderWidth: 1,
   },
+  infoTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.xs,
+  },
   infoTitle: {
     fontSize: Typography.sizes.sm,
     fontWeight: Typography.weights.semibold,
-    marginBottom: Spacing.xs,
   },
   infoText: {
     fontSize: Typography.sizes.sm,

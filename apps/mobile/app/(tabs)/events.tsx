@@ -9,13 +9,13 @@ import { useQuery } from '@tanstack/react-query';
 import { eventsApi } from '@ekusa/api-client';
 import { useAuthStore } from '@/stores/authStore';
 import { useTheme } from '@/hooks/useTheme';
-import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
+import { Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { EventCard } from '@/components/EventCard';
 import { router } from 'expo-router';
 
 export default function EventsScreen() {
   const { user } = useAuthStore();
-  const { colors, colorScheme } = useTheme();
+  const { colors } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState<'all' | string>('all');
 
   const { data: events, isLoading, refetch } = useQuery({
@@ -66,13 +66,14 @@ export default function EventsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Category Filter */}
-      <View style={styles.categoryContainer}>
+      <View style={[styles.categoryContainer, { backgroundColor: colors.surface, borderBottomColor: colors.divider }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScrollContent}>
           {categories.map((cat) => (
             <TouchableOpacity
               key={cat.key}
               style={[
                 styles.categoryChip,
+                { borderColor: colors.border },
                 selectedCategory === cat.key && { backgroundColor: colors.primary, borderColor: colors.primary },
               ]}
               onPress={() => setSelectedCategory(cat.key)}
@@ -100,7 +101,7 @@ export default function EventsScreen() {
             data={myRegistrations?.items?.slice(0, 3) || []}
             keyExtractor={(item: any) => item.id}
             renderItem={({ item }: { item: any }) => (
-              <EventCard event={item} onPress={() => handleEventPress(item.id)} colorScheme={colorScheme} />
+              <EventCard event={item} onPress={() => handleEventPress(item.id)} />
             )}
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -132,7 +133,7 @@ export default function EventsScreen() {
             data={upcomingEvents}
             keyExtractor={(item: any) => item.id}
             renderItem={({ item }: { item: any }) => (
-              <EventCard event={item} onPress={() => handleEventPress(item.id)} colorScheme={colorScheme} />
+              <EventCard event={item} onPress={() => handleEventPress(item.id)} />
             )}
             contentContainerStyle={styles.listContent}
           />
@@ -150,7 +151,7 @@ export default function EventsScreen() {
             data={pastEvents}
             keyExtractor={(item: any) => item.id}
             renderItem={({ item }: { item: any }) => (
-              <EventCard event={item} onPress={() => handleEventPress(item.id)} colorScheme={colorScheme} />
+              <EventCard event={item} onPress={() => handleEventPress(item.id)} />
             )}
             contentContainerStyle={styles.listContent}
           />
@@ -165,9 +166,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   categoryContainer: {
-    backgroundColor: Colors.light.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.light.divider,
     paddingVertical: Spacing.sm,
   },
   categoryScrollContent: {

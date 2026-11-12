@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTokens';
 import { router } from 'expo-router';
 import { registerRequestSchema } from '@ekusa/validation';
+import { Check } from 'lucide-react-native';
 
 export default function RegisterScreen() {
   const { colors } = useTheme();
@@ -255,14 +256,11 @@ export default function RegisterScreen() {
 function RequirementItem({ met, text, colorScheme }: { met: boolean; text: string; colorScheme: typeof Colors.light | typeof Colors.dark }) {
   return (
     <View style={styles.requirementRow}>
-      <View
-        style={[
-          styles.requirementIcon,
-          { backgroundColor: met ? colorScheme.success : colorScheme.border },
-        ]}
-      >
-        {met && <Text style={styles.checkmark}>✓</Text>}
-      </View>
+      {met ? (
+        <Check size={16} color={colorScheme.success} strokeWidth={3} />
+      ) : (
+        <View style={[styles.requirementIcon, { backgroundColor: colorScheme.border }]} />
+      )}
       <Text style={[styles.requirementText, { color: met ? colorScheme.success : colorScheme.textTertiary }]}>{text}</Text>
     </View>
   );
@@ -379,11 +377,6 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  checkmark: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: Typography.weights.bold,
   },
   requirementText: {
     fontSize: Typography.sizes.xs,

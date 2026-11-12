@@ -1,138 +1,141 @@
 /**
  * EKUSA Mobile App - Design Tokens
  * Centralized design system values for consistent UI
+ * Palette per repo DESIGN.md: cream canvas, coral accent, ink text, dark-navy surface
  */
+
+import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    // Primary brand colors
-    primary: '#1B5E20', // Deep green - EKUSA brand
-    primaryLight: '#2E7D32',
-    primaryDark: '#145214',
-    primaryContainer: '#E8F5E9',
+    // Primary brand color - coral
+    primary: '#CC785C',
+    primaryLight: '#D98E75',
+    primaryDark: '#A9583E',
+    primaryContainer: '#F3E5DE',
     onPrimary: '#FFFFFF',
-    onPrimaryContainer: '#1B5E20',
+    onPrimaryContainer: '#7A3B27',
 
-    // Secondary colors
-    secondary: '#0D47A1', // Deep blue
-    secondaryLight: '#1565C0',
-    secondaryContainer: '#E3F2FD',
-    onSecondary: '#FFFFFF',
-    onSecondaryContainer: '#0D47A1',
+    // Secondary - warm ink navy
+    secondary: '#141413',
+    secondaryLight: '#181715',
+    secondaryContainer: '#EFE9DE',
+    onSecondary: '#FAF9F5',
+    onSecondaryContainer: '#141413',
 
-    // Tertiary/Accent
-    tertiary: '#E65100', // Orange
-    tertiaryContainer: '#FFF3E0',
+    // Tertiary/Accent - warm sand
+    tertiary: '#B08968',
+    tertiaryContainer: '#EFE9DE',
     onTertiary: '#FFFFFF',
-    onTertiaryContainer: '#E65100',
+    onTertiaryContainer: '#6B4F35',
 
     // Surface & Background
     surface: '#FFFFFF',
-    surfaceVariant: '#F5F5F5',
-    surfaceContainer: '#EEEEEE',
-    background: '#FAFAFA',
+    surfaceVariant: '#EFE9DE', // warm card surface
+    surfaceContainer: '#FAF9F5', // cream canvas
+    background: '#FAF9F5',
 
     // Text colors
-    textPrimary: '#1A1A2E',
-    textSecondary: '#4A4A5A',
-    textTertiary: '#757575',
-    textInverse: '#FFFFFF',
+    textPrimary: '#141413',
+    textSecondary: '#5E5D59',
+    textTertiary: '#8E8C84',
+    textInverse: '#FAF9F5',
     textOnPrimary: '#FFFFFF',
 
     // Border & Dividers
-    border: '#E0E0E0',
-    borderStrong: '#BDBDBD',
-    divider: '#EEEEEE',
+    border: '#E6DFD8',
+    borderStrong: '#D0C7BD',
+    divider: '#EFE9DE',
 
     // Status colors
-    success: '#2E7D32',
-    successContainer: '#E8F5E9',
-    warning: '#F57F17',
-    warningContainer: '#FFF8E1',
-    error: '#C62828',
-    errorContainer: '#FDECEA',
-    info: '#0288D1',
-    infoContainer: '#E1F5FE',
+    success: '#5DB872',
+    successContainer: '#E7F4EA',
+    warning: '#D4A017',
+    warningContainer: '#FAF2DC',
+    error: '#C64545',
+    errorContainer: '#F8E5E3',
+    info: '#6E8BA8',
+    infoContainer: '#E7EEF4',
 
     // Overlay
-    overlay: 'rgba(0, 0, 0, 0.5)',
-    scrim: 'rgba(0, 0, 0, 0.32)',
+    overlay: 'rgba(20, 20, 19, 0.5)',
+    scrim: 'rgba(20, 20, 19, 0.32)',
 
     // Membership status colors
     membership: {
-      none: '#757575',
-      pending: '#F57F17',
-      verified: '#2E7D32',
-      rejected: '#C62828',
-      suspended: '#EF6C00',
+      none: '#8E8C84',
+      pending: '#D4A017',
+      verified: '#5DB872',
+      rejected: '#C64545',
+      suspended: '#B08968',
     },
 
     // Priority colors
     priority: {
-      normal: '#757575',
-      important: '#F57F17',
-      urgent: '#C62828',
+      normal: '#8E8C84',
+      important: '#D4A017',
+      urgent: '#C64545',
     },
 
     // Message status
     messageStatus: {
-      pending: '#757575',
-      sent: '#1565C0',
-      delivered: '#1B5E20',
-      read: '#1B5E20',
-      failed: '#C62828',
+      pending: '#8E8C84',
+      sent: '#5E5D59',
+      delivered: '#CC785C',
+      seen: '#5DB872',
+      failed: '#C64545',
     },
   },
 
   dark: {
-    // Primary brand colors
-    primary: '#81C784',
-    primaryLight: '#A5D6A7',
-    primaryDark: '#4CAF50',
-    primaryContainer: '#1B5E20',
-    onPrimary: '#1A1A2E',
-    onPrimaryContainer: '#A5D6A7',
+    // Primary brand color - coral (lightened for dark canvas)
+    primary: '#D98E75',
+    primaryLight: '#E5A98F',
+    primaryDark: '#CC785C',
+    primaryContainer: '#3A2A22',
+    onPrimary: '#141413',
+    onPrimaryContainer: '#E5A98F',
 
-    // Secondary colors
-    secondary: '#90CAF9',
-    secondaryLight: '#BBDEFB',
-    secondaryContainer: '#0D47A1',
-    onSecondary: '#1A1A2E',
-    onSecondaryContainer: '#90CAF9',
+    // Secondary
+    secondary: '#FAF9F5',
+    secondaryLight: '#EFE9DE',
+    secondaryContainer: '#2C2A26',
+    onSecondary: '#141413',
+    onSecondaryContainer: '#EFE9DE',
 
     // Tertiary/Accent
-    tertiary: '#FFB74D',
-    tertiaryContainer: '#E65100',
-    onTertiary: '#1A1A2E',
-    onTertiaryContainer: '#FFB74D',
+    tertiary: '#C9A184',
+    tertiaryContainer: '#3A2F26',
+    onTertiary: '#141413',
+    onTertiaryContainer: '#C9A184',
 
     // Surface & Background
-    surface: '#1E1E1E',
-    surfaceVariant: '#2C2C2C',
-    surfaceContainer: '#383838',
-    background: '#121212',
+    surface: '#181715',
+    surfaceVariant: '#252320',
+    surfaceContainer: '#1F1E1B',
+    background: '#141413',
 
     // Text colors
-    textPrimary: '#FFFFFF',
-    textSecondary: '#BDBDBD',
-    textTertiary: '#9E9E9E',
-    textInverse: '#1A1A2E',
-    textOnPrimary: '#1A1A2E',
+    textPrimary: '#FAF9F5',
+    textSecondary: '#B9B4A9',
+    textTertiary: '#8E8C84',
+    textInverse: '#141413',
+    textOnPrimary: '#141413',
 
     // Border & Dividers
-    border: '#424242',
-    borderStrong: '#616161',
-    divider: '#2C2C2C',
+    border: '#302E2A',
+    borderStrong: '#46433D',
+    divider: '#252320',
 
     // Status colors
-    success: '#66BB6A',
-    successContainer: '#1B5E20',
-    warning: '#FFB74D',
-    warningContainer: '#E65100',
-    error: '#EF9A9A',
-    errorContainer: '#B71C1C',
-    info: '#64B5F6',
-    infoContainer: '#01579B',
+    success: '#7CC98D',
+    successContainer: '#22392A',
+    warning: '#E4B84C',
+    warningContainer: '#3C3320',
+    error: '#E07A6E',
+    errorContainer: '#422521',
+    info: '#8FA9C4',
+    infoContainer: '#22303C',
 
     // Overlay
     overlay: 'rgba(0, 0, 0, 0.7)',
@@ -140,27 +143,27 @@ export const Colors = {
 
     // Membership status colors
     membership: {
-      none: '#9E9E9E',
-      pending: '#FFB74D',
-      verified: '#66BB6A',
-      rejected: '#EF9A9A',
-      suspended: '#FFAB40',
+      none: '#8E8C84',
+      pending: '#E4B84C',
+      verified: '#7CC98D',
+      rejected: '#E07A6E',
+      suspended: '#C9A184',
     },
 
     // Priority colors
     priority: {
-      normal: '#9E9E9E',
-      important: '#FFB74D',
-      urgent: '#EF9A9A',
+      normal: '#8E8C84',
+      important: '#E4B84C',
+      urgent: '#E07A6E',
     },
 
     // Message status
     messageStatus: {
-      pending: '#9E9E9E',
-      sent: '#64B5F6',
-      delivered: '#81C784',
-      read: '#81C784',
-      failed: '#EF9A9A',
+      pending: '#8E8C84',
+      sent: '#B9B4A9',
+      delivered: '#D98E75',
+      seen: '#7CC98D',
+      failed: '#E07A6E',
     },
   },
 } as const;
@@ -180,6 +183,8 @@ export const Typography = {
     medium: 'System',
     semibold: 'System',
     bold: 'System',
+    // Serif display face for hero/section titles (DESIGN.md display substitute)
+    display: Platform.OS === 'ios' ? 'Georgia' : 'serif',
   },
   sizes: {
     xs: 11,
@@ -205,11 +210,11 @@ export const Typography = {
 
 export const BorderRadius = {
   xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
+  sm: 8, // buttons & inputs
+  md: 12, // cards
+  lg: 16, // hero surfaces
   xl: 24,
-  full: 9999,
+  full: 9999, // pills & badges
 } as const;
 
 export const Shadows = {
@@ -221,30 +226,30 @@ export const Shadows = {
     elevation: 0,
   },
   xs: {
-    shadowColor: '#000',
+    shadowColor: '#141413',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 2,
     elevation: 1,
   },
   sm: {
-    shadowColor: '#000',
+    shadowColor: '#141413',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
   },
   md: {
-    shadowColor: '#000',
+    shadowColor: '#141413',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 4,
   },
   lg: {
-    shadowColor: '#000',
+    shadowColor: '#141413',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 8,
   },
