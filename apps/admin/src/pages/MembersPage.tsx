@@ -165,7 +165,7 @@ export function MembersPage() {
                     <td style={styles.cell}>
                       <span style={{
                         ...styles.statusBadge,
-                        backgroundColor: `${statusColors[accountStatus] || 'var(--color-text-tertiary)'}20`,
+                        backgroundColor: `color-mix(in srgb, ${statusColors[accountStatus] || 'var(--color-text-tertiary)'} 12%, transparent)`,
                         color: statusColors[accountStatus] || 'var(--color-text-tertiary)',
                       }}>
                         {statusLabels[accountStatus] || accountStatus}
@@ -174,7 +174,7 @@ export function MembersPage() {
                     <td style={styles.cell}>
                       <span style={{
                         ...styles.statusBadge,
-                        backgroundColor: `${statusColors[memStatus] || 'var(--color-text-tertiary)'}20`,
+                        backgroundColor: `color-mix(in srgb, ${statusColors[memStatus] || 'var(--color-text-tertiary)'} 12%, transparent)`,
                         color: statusColors[memStatus] || 'var(--color-text-tertiary)',
                       }}>
                         {statusLabels[memStatus] || memStatus}

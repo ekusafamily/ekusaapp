@@ -15,23 +15,35 @@ interface Community {
 export function CommunitiesPage() {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     const fetch = async () => {
+      setIsLoading(true);
+      setError('');
       try {
         const response = await apiClient.get('/communities', { params: { page, limit: 20 } });
         const data = handleResponse(response);
         setCommunities(data.items);
         setTotalPages(data.totalPages);
-      } catch { }
-      finally { setIsLoading(false); }
+      } catch {
+        setError('Failed to load communities');
+      } finally { setIsLoading(false); }
     };
     fetch();
   }, [page]);
 
   if (isLoading) return <div style={styles.loading}>Loading...</div>;
+
+  if (error) {
+    return (
+      <div style={styles.container}>
+        <div style={{ ...styles.error, padding: 'var(--spacing-lg)' }}>{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
@@ -81,6 +93,7 @@ export function CommunitiesPage() {
 const styles: Record<string, React.CSSProperties> = {
   container: {display:'flex',flexDirection:'column',gap:'var(--spacing-lg)'},
   loading:{display:'flex',justifyContent:'center',alignItems:'center',padding:'var(--spacing-xxl)',color:'var(--color-text-secondary)'},
+  error:{padding:'var(--spacing-lg)',borderRadius:'var(--border-radius-md)',backgroundColor:'var(--color-error-container)',color:'var(--color-error)'},
   header:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'var(--spacing-md)'},
   title:{fontSize:'var(--font-size-xxl)',fontWeight:'var(--font-weight-semibold)',color:'var(--color-text-primary)'},
   tableContainer:{overflowX:'auto',backgroundColor:'var(--color-surface)',borderRadius:'var(--border-radius-lg)',border:'1px solid var(--color-border)'},

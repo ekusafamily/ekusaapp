@@ -141,7 +141,7 @@ export function MembershipPage() {
                 <td style={styles.cell}>
                   <span style={{
                     ...styles.statusBadge,
-                    backgroundColor: `${statusColors[app.membershipStatus] || 'var(--color-text-tertiary)'}20`,
+                    backgroundColor: `color-mix(in srgb, ${statusColors[app.membershipStatus] || 'var(--color-text-tertiary)'} 12%, transparent)`,
                     color: statusColors[app.membershipStatus] || 'var(--color-text-tertiary)',
                   }}>
                     {app.membershipStatus}

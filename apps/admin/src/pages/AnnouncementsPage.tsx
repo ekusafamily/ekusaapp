@@ -26,6 +26,7 @@ export function AnnouncementsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [viewingAnnouncement, setViewingAnnouncement] = useState<Announcement | null>(null);
   const [formData, setFormData] = useState({
     title: '', body: '', category: 'general', priority: 'normal',
     targets: [{ type: 'everyone', value: '' }],
@@ -48,17 +49,41 @@ export function AnnouncementsPage() {
   }, [page, statusFilter]);
 
   const handleCreate = async () => {
+    if (!formData.title.trim() || !formData.body.trim()) { alert('Title and body are required'); return; }
     try {
-      await apiClient.post('/admin/announcements', formData);
+      await apiClient.post('/admin/announcements', {
+        ...formData,
+        scheduledAt: formData.scheduledAt ? new Date(formData.scheduledAt).toISOString() : undefined,
+        expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : undefined,
+      });
       setShowCreateModal(false);
       setFormData({ title: '', body: '', category: 'general', priority: 'normal', targets: [{ type: 'everyone', value: '' }], scheduledAt: '', expiresAt: '', pinned: false });
-      const response = await apiClient.get('/admin/announcements', { params: { status: statusFilter, page, limit: 20 } });
-      setAnnouncements(handleResponse(response).items);
+      await refreshList();
     } catch { alert('Failed to create announcement'); }
   };
 
   const handlePublish = async (id: string) => {
-    try { await apiClient.post(`/admin/announcements/${id}/publish`); } catch { alert('Failed to publish'); }
+    try {
+      await apiClient.post(`/admin/announcements/${id}/publish`);
+      await refreshList();
+    } catch { alert('Failed to publish'); }
+  };
+
+  const handleArchive = async (id: string) => {
+    if (!confirm('Archive this announcement?')) return;
+    try {
+      await apiClient.post(`/admin/announcements/${id}/archive`);
+      await refreshList();
+    } catch { alert('Failed to archive'); }
+  };
+
+  const refreshList = async () => {
+    try {
+      const response = await apiClient.get('/admin/announcements', { params: { status: statusFilter, page, limit: 20 } });
+      const data = handleResponse(response);
+      setAnnouncements(data.items);
+      setTotalPages(data.totalPages);
+    } catch { setError('Failed to load announcements'); }
   };
 
   const priorityColors: Record<string, string> = { normal: 'var(--color-text-tertiary)', important: 'var(--color-warning)', urgent: 'var(--color-error)' };
@@ -99,16 +124,16 @@ export function AnnouncementsPage() {
               <tr key={a.id} style={styles.row}>
                 <td style={styles.cell}><strong>{a.title}</strong></td>
                 <td style={styles.cell}>{a.category}</td>
-                <td style={styles.cell}><span style={{...styles.priorityBadge, backgroundColor:`${priorityColors[a.priority]}20`, color:priorityColors[a.priority]}}>{a.priority}</span></td>
-                <td style={styles.cell}><span style={{...styles.statusBadge, backgroundColor:`${statusColors[a.status]}20`, color:statusColors[a.status]}}>{a.status}</span></td>
+                <td style={styles.cell}><span style={{...styles.priorityBadge, backgroundColor:`color-mix(in srgb, ${priorityColors[a.priority]} 12%, transparent)`, color:priorityColors[a.priority]}}>{a.priority}</span></td>
+                <td style={styles.cell}><span style={{...styles.statusBadge, backgroundColor:`color-mix(in srgb, ${statusColors[a.status]} 12%, transparent)`, color:statusColors[a.status]}}>{a.status}</span></td>
                 <td style={styles.cell}>{a.publisherName}</td>
                 <td style={styles.cell}>{a.publishedAt ? new Date(a.publishedAt).toLocaleDateString() : '-'}</td>
                 <td style={styles.cell}>{a.readCount}</td>
                 <td style={styles.cell}>
                   <div style={styles.actions}>
                     {a.status === 'draft' && <button style={styles.publishButton} onClick={() => handlePublish(a.id)}>Publish</button>}
-                    {a.status === 'published' && <button style={styles.archiveButton} onClick={() => alert('Archive not implemented')}>Archive</button>}
-                    <button style={styles.viewButton}>View</button>
+                    {a.status === 'published' && <button style={styles.archiveButton} onClick={() => handleArchive(a.id)}>Archive</button>}
+                    <button style={styles.viewButton} onClick={() => setViewingAnnouncement(a)}>View</button>
                   </div>
                 </td>
               </tr>
@@ -153,6 +178,28 @@ export function AnnouncementsPage() {
           </div>
         </div>
       )}
+
+      {/* View Modal */}
+      {viewingAnnouncement && (
+        <div style={styles.modalOverlay} onClick={() => setViewingAnnouncement(null)}>
+          <div style={{ ...styles.modal, maxWidth: 600 }} onClick={e => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>{viewingAnnouncement.title}</h3>
+            <div style={{ display: 'flex', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-tertiary)' }}>
+              <span>{viewingAnnouncement.category}</span>
+              <span>{viewingAnnouncement.priority}</span>
+              <span>{viewingAnnouncement.status}</span>
+              <span>by {viewingAnnouncement.publisherName}</span>
+              <span>{viewingAnnouncement.readCount} reads</span>
+            </div>
+            <p style={{ whiteSpace: 'pre-wrap', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--spacing-lg)' }}>{viewingAnnouncement.body}</p>
+            {viewingAnnouncement.scheduledAt && <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-tertiary)' }}>Scheduled: {new Date(viewingAnnouncement.scheduledAt).toLocaleString()}</p>}
+            {viewingAnnouncement.expiresAt && <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-tertiary)' }}>Expires: {new Date(viewingAnnouncement.expiresAt).toLocaleString()}</p>}
+            <div style={{ ...styles.modalButtons, marginTop: 'var(--spacing-lg)' }}>
+              <button style={styles.cancelButton} onClick={() => setViewingAnnouncement(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -186,7 +233,7 @@ const styles: Record<string, React.CSSProperties> = {
   formGroup:{marginBottom:'var(--spacing-md)'},
   label:{display:'block',fontSize:'var(--font-size-sm)',fontWeight:'var(--font-weight-medium)',marginBottom:'var(--spacing-xs)',color:'var(--color-text-primary)'},
   input:{width:'100%',padding:'var(--spacing-sm) var(--spacing-md)',border:'1px solid var(--color-border)',borderRadius:'var(--border-radius-md)',fontSize:'var(--font-size-sm)',fontFamily:'inherit'},
-  textarea:{width:'100%',padding:'var(--spacing-sm) var(--spacing-md)',border:'1px solid var(--color-border)',borderRadius:'var(--border-radius-md)',fontSize:'var(--size-sm)',fontFamily:'inherit',resize:'vertical'},
+  textarea:{width:'100%',padding:'var(--spacing-sm) var(--spacing-md)',border:'1px solid var(--color-border)',borderRadius:'var(--border-radius-md)',fontSize:'var(--font-size-sm)',fontFamily:'inherit',resize:'vertical'},
   formRow:{display:'flex',gap:'var(--spacing-md)'},
   checkboxLabel:{display:'flex',alignItems:'center',gap:'var(--spacing-sm)',marginBottom:'var(--spacing-lg)',cursor:'pointer'},
   modalButtons:{display:'flex',justifyContent:'flex-end',gap:'var(--spacing-md)'},

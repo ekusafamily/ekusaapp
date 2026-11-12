@@ -15,19 +15,31 @@ interface Leader {
 export function LeadershipPage() {
   const [leaders, setLeaders] = useState<Leader[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const fetch = async () => {
+      setIsLoading(true);
+      setError('');
       try {
         const response = await apiClient.get('/leadership');
         setLeaders(handleResponse(response));
-      } catch { }
-      finally { setIsLoading(false); }
+      } catch {
+        setError('Failed to load leadership directory');
+      } finally { setIsLoading(false); }
     };
     fetch();
   }, []);
 
   if (isLoading) return <div style={styles.loading}>Loading...</div>;
+
+  if (error) {
+    return (
+      <div style={styles.container}>
+        <div style={{ ...styles.error, padding: 'var(--spacing-lg)' }}>{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
@@ -62,6 +74,7 @@ export function LeadershipPage() {
 const styles: Record<string, React.CSSProperties> = {
   container: {display:'flex',flexDirection:'column',gap:'var(--spacing-lg)'},
   loading:{display:'flex',justifyContent:'center',alignItems:'center',padding:'var(--spacing-xxl)',color:'var(--color-text-secondary)'},
+  error:{padding:'var(--spacing-lg)',borderRadius:'var(--border-radius-md)',backgroundColor:'var(--color-error-container)',color:'var(--color-error)'},
   header:{display:'flex',justifyContent:'space-between',alignItems:'center'},
   title:{fontSize:'var(--font-size-xxl)',fontWeight:'var(--font-weight-semibold)',color:'var(--color-text-primary)'},
   grid:{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))',gap:'var(--spacing-lg)'},

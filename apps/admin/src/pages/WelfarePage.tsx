@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import { apiClient, handleResponse } from '../lib/apiClient';
 
 interface WelfareRequest {
@@ -19,9 +20,17 @@ interface WelfareUpdateData {
   updateMessage: string;
 }
 
+interface Officer {
+  id: string;
+  username: string;
+  displayName: string;
+}
+
 export function WelfarePage() {
   const [requests, setRequests] = useState<WelfareRequest[]>([]);
+  const [officers, setOfficers] = useState<Officer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -37,16 +46,31 @@ export function WelfarePage() {
 
   useEffect(() => {
     const fetch = async () => {
+      setIsLoading(true);
+      setError('');
       try {
         const response = await apiClient.get('/admin/welfare/requests', { params: { status: statusFilter, page, limit: 20 } });
         const data: any = handleResponse(response);
         setRequests(data.items);
         setTotalPages(data.totalPages);
-      } catch { }
-      finally { setIsLoading(false); }
+      } catch {
+        setError('Failed to load welfare requests');
+      } finally { setIsLoading(false); }
     };
     fetch();
   }, [page, statusFilter]);
+
+  useEffect(() => {
+    const fetchOfficers = async () => {
+      try {
+        const response = await apiClient.get('/admin/welfare/officers');
+        setOfficers(handleResponse(response) || []);
+      } catch {
+        // Officer list is optional; assignment select falls back to "Unassigned" only
+      }
+    };
+    fetchOfficers();
+  }, []);
 
   const statusColors: Record<string, string> = {
     submitted: 'var(--color-warning)',
@@ -101,7 +125,7 @@ export function WelfarePage() {
       if (updateData.status !== viewingRequest.status || updateData.assignedOfficerId !== (viewingRequest.assignedOfficer?.id || null)) {
         await apiClient.patch(`/admin/welfare/requests/${viewingRequest.id}`, {
           status: updateData.status,
-          assignedOfficerId: updateData.assignedOfficerId || undefined,
+          assignedOfficerId: updateData.assignedOfficerId ?? null,
         });
       }
 
@@ -132,6 +156,14 @@ export function WelfarePage() {
   };
 
   if (isLoading) return <div style={styles.loading}>Loading...</div>;
+
+  if (error) {
+    return (
+      <div style={styles.container}>
+        <div style={{...styles.error, padding:'var(--spacing-lg)'}}>{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
@@ -165,7 +197,7 @@ export function WelfarePage() {
                 <td style={styles.cell}><strong>{r.subject}</strong></td>
                 <td style={styles.cell}>{r.category}</td>
                 <td style={styles.cell}>{r.user.profile?.displayName || r.user.username}</td>
-                <td style={styles.cell}><span style={{...styles.statusBadge, backgroundColor:`${statusColors[r.status]}20`, color:statusColors[r.status]}}>{r.status.replace('_',' ')}</span></td>
+                <td style={styles.cell}><span style={{...styles.statusBadge, backgroundColor:`color-mix(in srgb, ${statusColors[r.status]} 12%, transparent)`, color:statusColors[r.status]}}>{r.status.replace('_',' ')}</span></td>
                 <td style={styles.cell}>{r.assignedOfficer?.profile?.displayName || r.assignedOfficer?.username || '-'}</td>
                 <td style={styles.cell}>{new Date(r.createdAt).toLocaleDateString()}</td>
                 <td style={styles.cell}>
@@ -191,7 +223,7 @@ export function WelfarePage() {
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <h3 style={styles.modalTitle}>Welfare Request: {viewingRequest.subject}</h3>
-              <button style={styles.modalClose} onClick={handleCloseModal}>×</button>
+              <button style={styles.modalClose} onClick={handleCloseModal} aria-label="Close"><X size={18} /></button>
             </div>
             <div style={styles.modalContent}>
               <div style={styles.detailSection}>
@@ -226,7 +258,16 @@ export function WelfarePage() {
                       onChange={e => setUpdateData(prev => ({ ...prev, assignedOfficerId: e.target.value || null }))}
                     >
                       <option value="">Unassigned</option>
-                      {/* In a real app, you'd fetch available welfare officers */}
+                      {officers
+                        .filter(o => o.id !== viewingRequest.assignedOfficer?.id)
+                        .map(o => (
+                          <option key={o.id} value={o.id}>{o.displayName} (@{o.username})</option>
+                        ))}
+                      {viewingRequest.assignedOfficer && (
+                        <option value={viewingRequest.assignedOfficer.id}>
+                          {viewingRequest.assignedOfficer.profile?.displayName || viewingRequest.assignedOfficer.username} (@{viewingRequest.assignedOfficer.username})
+                        </option>
+                      )}
                     </select>
                   </div>
                   <div style={styles.formRow}>

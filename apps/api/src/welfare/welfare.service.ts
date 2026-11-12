@@ -111,6 +111,61 @@ export class WelfareService {
     return { items, page, limit, total, totalPages: Math.ceil(total / limit) };
   }
 
+  async listOfficers() {
+    const userRoles = await this.prisma.userRole.findMany({
+      where: {
+        role: { name: { in: ['welfare_officer', 'super_admin'] } },
+        user: { accountStatus: { not: 'deactivated' } },
+      },
+      include: {
+        user: {
+          select: { id: true, username: true, profile: { select: { displayName: true } } },
+        },
+      },
+    });
+
+    const seen = new Set<string>();
+    return userRoles
+      .map(ur => ur.user)
+      .filter(user => {
+        if (seen.has(user.id)) return false;
+        seen.add(user.id);
+        return true;
+      })
+      .map(user => ({
+        id: user.id,
+        username: user.username,
+        displayName: user.profile?.displayName || user.username,
+      }));
+  }
+
+  async getById(id: string) {
+    const request = await this.prisma.welfareRequest.findUnique({
+      where: { id },
+      include: {
+        user: { select: { id: true, username: true, profile: { select: { displayName: true } } } },
+        assignedOfficer: { select: { id: true, username: true, profile: { select: { displayName: true } } } },
+        updates: {
+          include: {
+            author: { select: { id: true, username: true, profile: { select: { displayName: true } } } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+    if (!request) throw new NotFoundException('Welfare request not found');
+
+    return {
+      ...request,
+      updates: request.updates.map(update => ({
+        id: update.id,
+        message: update.message,
+        createdAt: update.createdAt,
+        createdByName: update.author?.profile?.displayName || update.author?.username || 'System',
+      })),
+    };
+  }
+
   async update(id: string, adminUserId: string, data: { status?: string; assignedOfficerId?: string | null }) {
     const request = await this.prisma.welfareRequest.findUnique({ where: { id } });
     if (!request) throw new NotFoundException('Welfare request not found');

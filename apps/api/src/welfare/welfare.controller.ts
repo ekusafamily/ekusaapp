@@ -89,6 +89,24 @@ export class AdminWelfareController {
     return this.welfareService.list(params);
   }
 
+  @Get('officers')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'welfare_officer', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List assignable welfare officers (admin)' })
+  async listOfficers() {
+    return this.welfareService.listOfficers();
+  }
+
+  @Get('requests/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'welfare_officer', 'chairperson', 'vice_chairperson')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get welfare request details (admin)' })
+  async getById(@Param('id') id: string) {
+    return this.welfareService.getById(id);
+  }
+
   @Patch('requests/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin', 'welfare_officer')

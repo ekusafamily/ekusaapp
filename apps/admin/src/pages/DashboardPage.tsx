@@ -102,7 +102,7 @@ export function DashboardPage() {
 function StatCard({ title, value, icon, color }: { title: string; value: number; icon: React.ReactNode; color: string }) {
   return (
     <div style={styles.statCard}>
-      <div style={{ ...styles.statIcon, backgroundColor: `${color}20` }}>
+      <div style={{ ...styles.statIcon, backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)` }}>
         {icon}
       </div>
       <div style={styles.statContent}>

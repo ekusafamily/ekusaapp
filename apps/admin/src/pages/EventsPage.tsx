@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import { apiClient, handleResponse } from '../lib/apiClient';
 
 interface Event {
@@ -33,6 +34,7 @@ interface EventFormData {
 export function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('published');
@@ -55,13 +57,16 @@ export function EventsPage() {
 
   useEffect(() => {
     const fetch = async () => {
+      setIsLoading(true);
+      setError('');
       try {
         const response = await apiClient.get('/admin/events', { params: { status: statusFilter, page, limit: 20 } });
         const data = handleResponse(response);
         setEvents(data.items);
         setTotalPages(data.totalPages);
-      } catch { }
-      finally { setIsLoading(false); }
+      } catch {
+        setError('Failed to load events');
+      } finally { setIsLoading(false); }
     };
     fetch();
   }, [page, statusFilter]);
@@ -169,6 +174,14 @@ export function EventsPage() {
 
   if (isLoading) return <div style={styles.loading}>Loading events...</div>;
 
+  if (error) {
+    return (
+      <div style={styles.container}>
+        <div style={{ ...styles.error, padding: 'var(--spacing-lg)' }}>{error}</div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -196,21 +209,29 @@ export function EventsPage() {
             <th style={styles.headerCell}>Actions</th>
           </tr></thead>
           <tbody>
-            {events.map(e => (
+            {events.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ ...styles.cell, textAlign: 'center', padding: 'var(--spacing-xl)', color: 'var(--color-text-tertiary)' }}>
+                  No events found for this filter
+                </td>
+              </tr>
+            ) : (
+            events.map(e => (
               <tr key={e.id} style={styles.row}>
                 <td style={styles.cell}><strong>{e.title}</strong></td>
                 <td style={styles.cell}>{e.category}</td>
                 <td style={styles.cell}>{new Date(e.startAt).toLocaleDateString()}</td>
                 <td style={styles.cell}>{e.venue}</td>
-                <td style={styles.cell}>{e.registrationCount}/{e.capacity || '∞'}</td>
-                <td style={styles.cell}><span style={{...styles.statusBadge, backgroundColor:`${statusColors[e.status]}20`, color:statusColors[e.status]}}>{e.status}</span></td>
+                <td style={styles.cell}>{e.registrationCount}/{e.capacity || 'Unlimited'}</td>
+                <td style={styles.cell}><span style={{...styles.statusBadge, backgroundColor:`color-mix(in srgb, ${statusColors[e.status]} 12%, transparent)`, color:statusColors[e.status]}}>{e.status}</span></td>
                 <td style={styles.cell}>
                   <div style={styles.actions}>
                     <button style={styles.viewButton} onClick={() => handleOpenEdit(e)}>View/Edit</button>
                   </div>
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
       </div>
@@ -227,7 +248,7 @@ export function EventsPage() {
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <h3 style={styles.modalTitle}>{editingEvent ? 'Edit Event' : 'Create Event'}</h3>
-              <button style={styles.modalClose} onClick={handleCloseModal}>×</button>
+              <button style={styles.modalClose} onClick={handleCloseModal} aria-label="Close"><X size={18} /></button>
             </div>
             <form onSubmit={handleSubmit} style={styles.form}>
               {submitError && <div style={styles.error}>{submitError}</div>}
