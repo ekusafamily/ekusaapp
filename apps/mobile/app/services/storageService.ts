@@ -177,6 +177,13 @@ class StorageService {
     return filtered.slice(0, limit);
   }
 
+  async deleteMessage(conversationId: string, messageId: string): Promise<void> {
+    await this.delete(`${STORAGE_PREFIXES.MESSAGES}${conversationId}_${messageId}`);
+    const listKey = `msg_list_${conversationId}`;
+    const list = (await this.get<Message[]>(listKey)) || [];
+    await this.set(listKey, list.filter((m: Message) => m.id !== messageId));
+  }
+
   async updateMessageStatus(messageId: string, conversationId: string, status: Message['status']): Promise<void> {
     const key = `${STORAGE_PREFIXES.MESSAGES}${conversationId}_${messageId}`;
     const message = await this.get<Message>(key);

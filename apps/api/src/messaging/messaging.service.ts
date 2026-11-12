@@ -10,10 +10,14 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MessagingGateway } from './messaging.gateway';
 
 @Injectable()
 export class MessagingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly gateway: MessagingGateway,
+  ) {}
 
   async listConversations(userId: string) {
     const conversations = await this.prisma.conversation.findMany({
@@ -175,6 +179,8 @@ export class MessagingService {
       }),
     ]);
 
+    this.gateway.broadcastNewMessage(data.conversationId, message).catch(() => {});
+
     return message;
   }
 
@@ -192,13 +198,20 @@ export class MessagingService {
         where: { id: messageId },
         data: { status: 'delivered', deliveredAt: new Date() },
       });
+      this.gateway
+        .broadcastMessageStatus(message.conversationId, {
+          messageId,
+          status: 'delivered',
+          timestamp: new Date().toISOString(),
+        })
+        .catch(() => {});
     }
 
     return { success: true };
   }
 
   async markSeen(userId: string, conversationId: string) {
-    await this.prisma.message.updateMany({
+    const updated = await this.prisma.message.updateMany({
       where: {
         conversationId,
         senderId: { not: userId },
@@ -206,6 +219,16 @@ export class MessagingService {
       },
       data: { status: 'seen', seenAt: new Date() },
     });
+
+    if (updated.count > 0) {
+      this.gateway
+        .broadcastMessageStatus(conversationId, {
+          messageId: '*',
+          status: 'seen',
+          timestamp: new Date().toISOString(),
+        })
+        .catch(() => {});
+    }
     return { success: true };
   }
 

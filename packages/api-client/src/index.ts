@@ -24,6 +24,15 @@ const getApiBaseUrl = (): string => {
 
 const API_BASE_URL = getApiBaseUrl();
 
+// WebSocket base for the /messaging gateway (same host, ws/wss scheme)
+export function getSocketBaseUrl(): string {
+  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_WS_BASE_URL) {
+    return process.env.EXPO_PUBLIC_WS_BASE_URL;
+  }
+  const ws = API_BASE_URL.replace(/^http/, 'ws').replace(/\/api\/v1\/?$/, '');
+  return ws;
+}
+
 const STORAGE_KEYS = {
   ACCESS_TOKEN: 'ekusa_access_token',
   REFRESH_TOKEN: 'ekusa_refresh_token',

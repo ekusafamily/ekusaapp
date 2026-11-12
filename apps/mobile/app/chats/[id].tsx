@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Keyboard,
 } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { messagingApi } from '@ekusa/api-client';
@@ -23,8 +24,9 @@ import { Colors, Spacing, Typography, BorderRadius } from '@/constants/DesignTok
 import type { ColorPalette } from '@/constants/DesignTokens';
 import { Avatar } from '@/components/Avatar';
 import { storageService } from '@/services/storageService';
+import { socketService } from '@/services/socketService';
 import { router, useLocalSearchParams } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Send, Check, CheckCheck, MessageSquare, AlertCircle, Loader } from 'lucide-react-native';
 
 const POLL_INTERVAL = 8000; // Poll for new messages every 8 seconds
@@ -35,6 +37,7 @@ export default function ChatScreen() {
   const conversationId = Array.isArray(rawId) ? rawId[0] : rawId;
   const { user } = useAuthStore();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [newMessage, setNewMessage] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
@@ -51,14 +54,63 @@ export default function ChatScreen() {
     // Announce presence for last seen tracking
     messagingApi.updateLastSeen().catch(() => {});
 
-    // Poll for new messages
+    // Keep the composer and latest messages visible when the keyboard opens
+    const keyboardEvents = Platform.OS === 'ios'
+      ? (['keyboardWillShow', 'keyboardDidShow'] as const)
+      : (['keyboardDidShow'] as const);
+    const scrollToLatest = () => {
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+    };
+    const keyboardSubs = keyboardEvents.map(event =>
+      Keyboard.addListener(event, scrollToLatest)
+    );
+
+    // Real-time delivery via the messaging gateway
+    socketService.connect();
+    socketService.joinConversation(conversationId);
+    const unregister = socketService.register({
+      onNewMessage: (message: any) => {
+        if (!message?.id || !message?.conversationId) return;
+        if (message.conversationId !== conversationId) return;
+        setMessages(prev => {
+          if (prev.some((m: any) => m.id === message.id)) return prev;
+          return mergeMessages(prev, [message]).merged;
+        });
+        storageService.saveMessage(message).catch(() => {});
+        if (message.senderId !== user?.id) {
+          messagingApi.markDelivered(message.id).catch(() => {});
+          messagingApi.markSeen(conversationId).catch(() => {});
+        }
+        scrollToBottom();
+      },
+      onMessageStatus: ({ messageId, status }: { messageId: string; status: string }) => {
+        if (messageId === '*') {
+          setMessages(prev => prev.map(m =>
+            m.senderId === user?.id && !m.id.startsWith('temp_')
+              ? { ...m, status }
+              : m,
+          ));
+        } else {
+          setMessages(prev => prev.map(m =>
+            m.id === messageId ? { ...m, status } : m,
+          ));
+        }
+      },
+    });
+
+    // Poll for new messages (fallback when the socket is unavailable)
     const interval = setInterval(() => {
-      if (!isSending) {
+      if (!socketService.isConnected()) {
         loadMessages(true);
       }
     }, POLL_INTERVAL);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      keyboardSubs.forEach(sub => sub.remove());
+      socketService.leaveConversation();
+      unregister();
+    };
   }, [conversationId]);
 
   const loadMessages = async (skipLocalLoad = false) => {
@@ -90,24 +142,24 @@ export default function ChatScreen() {
             seenAt: m.seenAt,
           }));
 
-          // Merge local and server messages, deduplicating by ID
+          // Merge with local messages: dedupe by id, then reconcile temp
+          // optimistic messages with their server copies (same sender+content)
+          let reconciledTempIds: string[] = [];
           setMessages(prevMessages => {
-            const merged = [...prevMessages];
-            for (const serverMsg of parsed) {
-              const existingIndex = merged.findIndex((m: any) => m.id === serverMsg.id);
-              if (existingIndex >= 0) {
-                merged[existingIndex] = { ...merged[existingIndex], ...serverMsg };
-              } else {
-                merged.push(serverMsg);
-              }
-            }
-            merged.sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
-            return merged;
+            const result = mergeMessages(prevMessages, parsed);
+            reconciledTempIds = result.replacedTempIds;
+            return result.merged;
           });
 
           // Save server messages to local storage for offline access
           for (const msg of parsed) {
             await storageService.saveMessage(msg);
+          }
+
+          // Purge temp copies that were reconciled, so they cannot reappear
+          // from the cache on the next load (the duplicate-message bug)
+          for (const tempId of reconciledTempIds) {
+            storageService.deleteMessage(conversationId, tempId).catch(() => {});
           }
 
           // Mark incoming messages as delivered, and the conversation as seen
@@ -135,16 +187,32 @@ export default function ChatScreen() {
       return messagingApi.sendMessage(conversationId, text) as Promise<any>;
     },
     onSuccess: (serverMsg: any) => {
-      setMessages(prev => prev.map(m =>
-        m.id.startsWith('temp_')
-          ? {
-              ...m,
-              id: serverMsg?.id || m.id,
-              status: serverMsg?.status || 'sent',
-              sentAt: serverMsg?.sentAt || m.sentAt,
-            }
-          : m
-      ));
+      let replacedTempId: string | null = null;
+      setMessages(prev => {
+        const idx = prev.findIndex(
+          m =>
+            m.id.startsWith('temp_') &&
+            m.senderId === serverMsg?.senderId &&
+            m.content === serverMsg?.content,
+        );
+        if (idx >= 0) {
+          replacedTempId = prev[idx].id;
+          const next = [...prev];
+          next[idx] = {
+            ...next[idx],
+            id: serverMsg?.id || next[idx].id,
+            status: serverMsg?.status || 'sent',
+            sentAt: serverMsg?.sentAt || next[idx].sentAt,
+          };
+          return next;
+        }
+        // No matching temp found: attach the server copy normally
+        return mergeMessages(prev, [serverMsg]).merged;
+      });
+      if (replacedTempId) {
+        storageService.deleteMessage(conversationId, replacedTempId).catch(() => {});
+      }
+      if (serverMsg) storageService.saveMessage(serverMsg).catch(() => {});
       setIsSending(false);
       queryClient.invalidateQueries({ queryKey: ['conversations'], refetchType: 'none' });
       scrollToBottom();
@@ -280,9 +348,9 @@ export default function ChatScreen() {
       </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.chatArea}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        keyboardVerticalOffset={insets.bottom}
       >
         {/* Messages List */}
         <FlatList
@@ -309,36 +377,40 @@ export default function ChatScreen() {
         />
 
         {/* Input Area */}
-        <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-          <TextInput
+        <View style={[styles.inputContainer, { backgroundColor: colors.background }]}>
+          <View
             style={[
-              styles.input,
-              { backgroundColor: colors.surfaceVariant, color: colors.textPrimary, borderColor: colors.border },
+              styles.inputRow,
+              { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
-            placeholder="Type a message..."
-            placeholderTextColor={colors.textTertiary}
-            value={newMessage}
-            onChangeText={setNewMessage}
-            multiline
-            maxLength={4000}
-            blurOnSubmit={false}
-          />
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              { backgroundColor: colors.primary },
-              !newMessage.trim() && { opacity: 0.5 },
-            ]}
-            onPress={handleSend}
-            disabled={!newMessage.trim() || isSending}
-            activeOpacity={0.7}
           >
-            {isSending ? (
-              <ActivityIndicator color={colors.onPrimary} size="small" />
-            ) : (
-              <Send size={18} color={colors.onPrimary} />
-            )}
-          </TouchableOpacity>
+            <TextInput
+              style={[styles.input, { color: colors.textPrimary }]}
+              placeholder="Type a message..."
+              placeholderTextColor={colors.textTertiary}
+              value={newMessage}
+              onChangeText={setNewMessage}
+              multiline
+              maxLength={4000}
+              blurOnSubmit={false}
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                { backgroundColor: colors.primary },
+                !newMessage.trim() && { opacity: 0.5 },
+              ]}
+              onPress={handleSend}
+              disabled={!newMessage.trim() || isSending}
+              activeOpacity={0.7}
+            >
+              {isSending ? (
+                <ActivityIndicator color={colors.onPrimary} size="small" />
+              ) : (
+                <Send size={18} color={colors.onPrimary} />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -371,6 +443,41 @@ function MessageStatus({
     return <CheckCheck size={14} color={colors.messageStatus.seen} />;
   }
   return null;
+}
+
+function mergeMessages(existing: any[], incoming: any[]): { merged: any[]; replacedTempIds: string[] } {
+  const merged = [...existing];
+  const replacedTempIds: string[] = [];
+
+  for (const msg of incoming) {
+    if (!msg?.id) continue;
+
+    // 1. Exact id match: update in place
+    let idx = merged.findIndex((m: any) => m.id === msg.id);
+    if (idx >= 0) {
+      merged[idx] = { ...merged[idx], ...msg };
+      continue;
+    }
+
+    // 2. Match an optimistic temp copy (same sender + content) and replace it
+    idx = merged.findIndex(
+      (m: any) =>
+        m.id.startsWith('temp_') &&
+        m.senderId === msg.senderId &&
+        m.content === msg.content,
+    );
+    if (idx >= 0) {
+      replacedTempIds.push(merged[idx].id);
+      merged[idx] = { ...merged[idx], ...msg };
+      continue;
+    }
+
+    // 3. New message
+    merged.push(msg);
+  }
+
+  merged.sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+  return { merged, replacedTempIds };
 }
 
 function formatTime(dateString: string): string {
@@ -508,19 +615,29 @@ const styles = StyleSheet.create({
     fontWeight: Typography.weights.medium,
   },
   inputContainer: {
+    padding: Spacing.md,
+    paddingTop: Spacing.sm,
+  },
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
     gap: Spacing.sm,
-    borderTopWidth: 1,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    paddingLeft: Spacing.md,
+    paddingRight: Spacing.xs,
+    paddingVertical: Spacing.xs,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   input: {
     flex: 1,
-    minHeight: 44,
+    minHeight: 40,
     maxHeight: 100,
-    borderWidth: 1,
-    borderRadius: BorderRadius.full,
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.xs,
     paddingVertical: Spacing.sm,
     fontSize: Typography.sizes.md,
   },

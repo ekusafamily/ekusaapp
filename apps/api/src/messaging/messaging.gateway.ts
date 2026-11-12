@@ -31,6 +31,8 @@ export class MessagingGateway implements OnGatewayConnection, OnGatewayDisconnec
       const payload = this.jwtService.verify(token);
       const userId = payload.sub;
 
+      client.data.userId = userId;
+
       if (!this.userSockets.has(userId)) this.userSockets.set(userId, new Set());
       this.userSockets.get(userId)!.add(client.id);
       client.join(`user:${userId}`);
@@ -67,8 +69,21 @@ export class MessagingGateway implements OnGatewayConnection, OnGatewayDisconnec
 
   @SubscribeMessage('joinConversation')
   async handleJoinConversation(@ConnectedSocket() client: Socket, @MessageBody() data: { conversationId: string }) {
+    if (!(await this.isMember(client, data.conversationId))) {
+      return { success: false, error: 'not_a_member' };
+    }
     client.join(`conversation:${data.conversationId}`);
     return { success: true };
+  }
+
+  private async isMember(client: Socket, conversationId: string): Promise<boolean> {
+    const userId = client.data?.userId;
+    if (!userId || !conversationId) return false;
+    const member = await this.prisma.conversationMember.findFirst({
+      where: { conversationId, userId },
+      select: { id: true },
+    });
+    return !!member;
   }
 
   @SubscribeMessage('leaveConversation')
