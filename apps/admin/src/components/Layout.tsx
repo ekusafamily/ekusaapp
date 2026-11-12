@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Tag, Megaphone, Calendar, HeartHandshake, Globe, GraduationCap, ShieldCheck, ClipboardList, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Tag, Megaphone, Calendar, HeartHandshake, Globe, GraduationCap, ShieldCheck, ClipboardList, Settings, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { apiClient, clearAuth } from '../lib/apiClient';
 
 const NAV_ITEMS = [
@@ -47,7 +47,7 @@ export function Layout() {
             onClick={() => setSidebarOpen(!sidebarOpen)}
             aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
           >
-            {sidebarOpen ? '◀' : '▶'}
+            {sidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
           </button>
         </div>
 
@@ -58,9 +58,8 @@ export function Layout() {
               to={item.path}
               style={({ isActive }: { isActive: boolean }) => ({
                 ...styles.navLink,
-                backgroundColor: isActive ? 'var(--color-primary-container)' : 'transparent',
-                color: isActive ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                borderLeft: isActive ? '3px solid var(--color-primary)' : '3px solid transparent',
+                backgroundColor: isActive ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+                color: isActive ? '#FFFFFF' : 'rgba(255, 255, 255, 0.62)',
               })}
               end={item.path === '/dashboard'}
             >
@@ -71,12 +70,15 @@ export function Layout() {
         </nav>
 
         <div style={styles.sidebarFooter}>
-          {sidebarOpen && (
-            <button style={styles.logoutButton} onClick={handleLogout}>
-              <span style={styles.logoutIcon}><LogOut size={18} /></span>
-              <span style={styles.logoutLabel}>Logout</span>
-            </button>
-          )}
+          <button
+            style={styles.logoutButton}
+            onClick={handleLogout}
+            aria-label="Logout"
+            title="Logout"
+          >
+            <span style={styles.logoutIcon}><LogOut size={18} /></span>
+            {sidebarOpen && <span style={styles.logoutLabel}>Logout</span>}
+          </button>
         </div>
       </aside>
 
@@ -109,8 +111,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   sidebar: {
     height: '100vh',
-    backgroundColor: 'var(--color-surface)',
-    borderRight: '1px solid var(--color-border)',
+    backgroundColor: 'var(--color-secondary)',
     display: 'flex',
     flexDirection: 'column',
     transition: 'width 0.2s ease',
@@ -125,7 +126,6 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 'var(--spacing-md)',
-    borderBottom: '1px solid var(--color-border)',
     minHeight: 'var(--header-height)',
   },
   logo: {
@@ -148,7 +148,8 @@ const styles: Record<string, React.CSSProperties> = {
   logoText: {
     fontSize: 'var(--font-size-lg)',
     fontWeight: 'var(--font-weight-semibold)',
-    color: 'var(--color-text-primary)',
+    letterSpacing: '-0.2px',
+    color: '#FFFFFF',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -156,12 +157,12 @@ const styles: Record<string, React.CSSProperties> = {
   toggleButton: {
     width: 32,
     height: 32,
-    borderRadius: 'var(--border-radius-md)',
+    borderRadius: 'var(--border-radius-full)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: 'var(--color-text-secondary)',
-    backgroundColor: 'var(--color-surface-variant)',
+    color: 'rgba(255, 255, 255, 0.72)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     fontSize: 'var(--font-size-sm)',
   },
   nav: {
@@ -177,10 +178,11 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: 'var(--spacing-md)',
     padding: 'var(--spacing-sm) var(--spacing-md)',
-    borderRadius: 'var(--border-radius-md)',
+    borderRadius: 'var(--border-radius-full)',
     fontSize: 'var(--font-size-sm)',
     fontWeight: 'var(--font-weight-medium)',
-    transition: 'all 0.15s ease',
+    letterSpacing: '-0.1px',
+    transition: 'background-color 0.15s ease, color 0.15s ease',
     textDecoration: 'none',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
@@ -196,7 +198,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
   sidebarFooter: {
     padding: 'var(--spacing-md)',
-    borderTop: '1px solid var(--color-border)',
   },
   logoutButton: {
     display: 'flex',
@@ -204,12 +205,11 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 'var(--spacing-md)',
     width: '100%',
     padding: 'var(--spacing-sm) var(--spacing-md)',
-    borderRadius: 'var(--border-radius-md)',
-    color: 'var(--color-error)',
-    backgroundColor: 'var(--color-error-container)',
+    borderRadius: 'var(--border-radius-full)',
+    color: 'rgba(255, 255, 255, 0.62)',
     fontSize: 'var(--font-size-sm)',
     fontWeight: 'var(--font-weight-medium)',
-    transition: 'all 0.15s ease',
+    transition: 'background-color 0.15s ease, color 0.15s ease',
   },
   logoutIcon: {
     fontSize: 'var(--font-size-lg)',
@@ -228,16 +228,20 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 'var(--spacing-md) var(--spacing-xl)',
-    backgroundColor: 'var(--color-surface)',
-    borderBottom: '1px solid var(--color-border)',
+    height: 'var(--header-height)',
+    padding: '0 var(--spacing-xl)',
+    backgroundColor: 'color-mix(in srgb, var(--color-background) 80%, transparent)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    borderBottom: '1px solid var(--color-divider)',
     position: 'sticky',
     top: 0,
     zIndex: 50,
   },
   pageTitle: {
-    fontSize: 'var(--font-size-xxl)',
+    fontSize: 'var(--font-size-xl)',
     fontWeight: 'var(--font-weight-semibold)',
+    letterSpacing: '-0.3px',
     color: 'var(--color-text-primary)',
   },
   headerActions: {
@@ -246,12 +250,13 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 'var(--spacing-md)',
   },
   userBadge: {
-    padding: 'var(--spacing-xs) var(--spacing-sm)',
+    padding: '4px 12px',
     borderRadius: 'var(--border-radius-full)',
-    backgroundColor: 'var(--color-primary-container)',
-    color: 'var(--color-primary)',
+    backgroundColor: 'var(--color-primary)',
+    color: 'var(--color-on-primary)',
     fontSize: 'var(--font-size-xs)',
-    fontWeight: 'var(--font-weight-semibold)',
+    fontWeight: 'var(--font-weight-medium)',
+    letterSpacing: '0.2px',
   },
   content: {
     flex: 1,
