@@ -181,8 +181,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 'var(--font-size-md)',
     color: 'var(--color-text-primary)',
     backgroundColor: 'var(--color-surface)',
-    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-    outline: 'none',
   },
   submitButton: {
     width: '100%',

@@ -332,7 +332,7 @@ const styles: Record<string, React.CSSProperties> = {
   pageInfo:{fontSize:'var(--font-size-sm)',color:'var(--color-text-secondary)'},
   // Modal styles
   modalOverlay:{position:'fixed',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:'var(--spacing-lg)'},
-  modal:{backgroundColor:'var(--color-surface)',borderRadius:'var(--border-radius-lg)',width:'100%',maxWidth:'700px',maxHeight:'90vh',overflowY:'auto',boxShadow:'var(--shadow-xl)'},
+  modal:{backgroundColor:'var(--color-surface)',borderRadius:'var(--border-radius-lg)',width:'100%',maxWidth:'700px',maxHeight:'90vh',overflowY:'auto',boxShadow:'var(--shadow-lg)'},
   modalHeader:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'var(--spacing-lg)',borderBottom:'1px solid var(--color-border)'},
   modalTitle:{fontSize:'var(--font-size-xl)',fontWeight:'var(--font-weight-semibold)',color:'var(--color-text-primary)',margin:0},
   modalClose:{background:'none',border:'none',fontSize:'var(--font-size-xxl)',cursor:'pointer',color:'var(--color-text-tertiary)',lineHeight:1},
@@ -346,7 +346,7 @@ const styles: Record<string, React.CSSProperties> = {
   formRow:{display:'flex',flexDirection:'column',gap:'var(--spacing-xs)'},
   label:{fontSize:'var(--font-size-sm)',fontWeight:'var(--font-weight-medium)',color:'var(--color-text-primary)'},
   input:{padding:'var(--spacing-sm) var(--spacing-md)',border:'1px solid var(--color-border)',borderRadius:'var(--border-radius-md)',fontSize:'var(--font-size-sm)',backgroundColor:'var(--color-background)',color:'var(--color-text-primary)'},
-  error:{padding:'var(--spacing-sm)',backgroundColor:'var(--color-error-container)',color:'var(--color-on-error-container)',borderRadius:'var(--border-radius-md)',fontSize:'var(--font-size-sm)'},
+  error:{padding:'var(--spacing-sm)',backgroundColor:'var(--color-error-container)',color:'var(--color-error)',borderRadius:'var(--border-radius-md)',fontSize:'var(--font-size-sm)'},
   formActions:{display:'flex',justifyContent:'flex-end',gap:'var(--spacing-md)',marginTop:'var(--spacing-md)'},
   cancelButton:{padding:'var(--spacing-sm) var(--spacing-md)',borderRadius:'var(--border-radius-md)',backgroundColor:'var(--color-surface-variant)',color:'var(--color-text-secondary)',fontSize:'var(--font-size-sm)',fontWeight:'var(--font-weight-medium)',border:'1px solid var(--color-border)'},
   submitButton:{padding:'var(--spacing-sm) var(--spacing-md)',borderRadius:'var(--border-radius-md)',backgroundColor:'var(--color-primary)',color:'var(--color-on-primary)',fontSize:'var(--font-size-sm)',fontWeight:'var(--font-weight-medium)'},
